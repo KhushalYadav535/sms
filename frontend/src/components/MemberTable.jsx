@@ -42,6 +42,7 @@ import {
   Delete as DeleteIcon,
   Visibility as ViewIcon,
 } from '@mui/icons-material';
+import { useUser } from '../context/UserContext';
 
 // Mock data - replace with actual API data
 const mockMembers = [
@@ -69,6 +70,7 @@ const mockMembers = [
 ];
 
 const MemberTable = () => {
+  const { userRole } = useUser();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
@@ -198,13 +200,15 @@ const MemberTable = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h5">Member Management</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setIsAddDialogOpen(true)}
-        >
-          Add Member
-        </Button>
+        {userRole === 'admin' && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setIsAddDialogOpen(true)}
+          >
+            Add Member
+          </Button>
+        )}
       </Box>
 
       <Grid container spacing={3}>
@@ -272,13 +276,15 @@ const MemberTable = () => {
                         </TableCell>
                         <TableCell>{member.joinDate}</TableCell>
                         <TableCell align="right">
-                          <IconButton
-                            onClick={(e) => handleMemberMenuClick(e, member)}
-                            size="small"
-                            aria-label="actions"
-                          >
-                            <MoreVertIcon />
-                          </IconButton>
+                          {userRole === 'admin' && (
+                            <IconButton
+                              onClick={(e) => handleMemberMenuClick(e, member)}
+                              size="small"
+                              aria-label="actions"
+                            >
+                              <MoreVertIcon />
+                            </IconButton>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -311,60 +317,62 @@ const MemberTable = () => {
             </Menu>
 
             {/* Member Actions Menu */}
-            <Menu
-              anchorEl={memberMenuAnchorEl}
-              open={Boolean(memberMenuAnchorEl)}
-              onClose={handleMemberMenuClose}
-            >
-              <MenuItem onClick={handleViewMember}>
-                <ListItem
-                  onClick={handleViewMember}
-                  sx={{
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: 'action.hover',
-                    },
-                  }}
-                >
-                  <ListItemIcon>
-                    <ViewIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="View Details" />
-                </ListItem>
-              </MenuItem>
-              <MenuItem onClick={handleEditMember}>
-                <ListItem
-                  onClick={handleEditMember}
-                  sx={{
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: 'action.hover',
-                    },
-                  }}
-                >
-                  <ListItemIcon>
-                    <EditIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Edit" />
-                </ListItem>
-              </MenuItem>
-              <MenuItem onClick={handleDeleteMember}>
-                <ListItem
-                  onClick={handleDeleteMember}
-                  sx={{
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: 'action.hover',
-                    },
-                  }}
-                >
-                  <ListItemIcon>
-                    <DeleteIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Delete" />
-                </ListItem>
-              </MenuItem>
-            </Menu>
+            {userRole === 'admin' && (
+              <Menu
+                anchorEl={memberMenuAnchorEl}
+                open={Boolean(memberMenuAnchorEl)}
+                onClose={handleMemberMenuClose}
+              >
+                <MenuItem onClick={handleViewMember}>
+                  <ListItem
+                    onClick={handleViewMember}
+                    sx={{
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                  >
+                    <ListItemIcon>
+                      <ViewIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary="View Details" />
+                  </ListItem>
+                </MenuItem>
+                <MenuItem onClick={handleEditMember}>
+                  <ListItem
+                    onClick={handleEditMember}
+                    sx={{
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                  >
+                    <ListItemIcon>
+                      <EditIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary="Edit" />
+                  </ListItem>
+                </MenuItem>
+                <MenuItem onClick={handleDeleteMember}>
+                  <ListItem
+                    onClick={handleDeleteMember}
+                    sx={{
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                  >
+                    <ListItemIcon>
+                      <DeleteIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary="Delete" />
+                  </ListItem>
+                </MenuItem>
+              </Menu>
+            )}
 
             {/* View Member Dialog */}
             <Dialog

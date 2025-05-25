@@ -28,6 +28,13 @@ import {
   Alert,
   Tabs,
   Tab,
+  Input,
+  Avatar,
+  Stack,
+  Fade,
+  Zoom,
+  Tooltip,
+  Badge,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,91 +48,73 @@ import {
   CheckCircle as CheckCircleIcon,
   Pending as PendingIcon,
   Cancel as CancelIcon,
+  AccessTime as TimeIcon,
+  Person as PersonIcon,
+  SentimentSatisfiedAlt as SmileIcon,
+  AttachFile as AttachFileIcon,
+  Comment as CommentIcon,
 } from '@mui/icons-material';
+import { useUser } from '../context/UserContext';
 
 // Mock data - replace with actual API data
 const mockComplaints = [
   {
     id: 1,
-    title: 'Water Leakage in Bathroom',
+    title: 'Water Leakage in Block A',
+    description: 'Water leaking from ceiling in flat 101, Block A',
     type: 'Maintenance',
-    description: 'There is a water leakage in the bathroom ceiling. Please check and fix the issue.',
-    status: 'Pending',
     priority: 'High',
+    status: 'Pending',
+    date: '2024-03-15',
     reportedBy: 'John Doe',
     flatNo: 'A-101',
-    date: '2024-03-20',
     assignedTo: 'Maintenance Team',
     comments: [
-      {
-        id: 1,
-        text: 'Issue reported and assigned to maintenance team',
-        date: '2024-03-20',
-        by: 'Admin',
-      },
-    ],
+      { id: 1, text: 'Issue reported', date: '2024-03-15', by: 'John Doe' },
+      { id: 2, text: 'Team assigned', date: '2024-03-15', by: 'Admin' }
+    ]
   },
   {
     id: 2,
     title: 'Broken Street Light',
+    description: 'Street light not working near Block C entrance',
     type: 'Infrastructure',
-    description: 'Street light near Block B is not working for the past 2 days.',
-    status: 'In Progress',
     priority: 'Medium',
+    status: 'In Progress',
+    date: '2024-03-14',
     reportedBy: 'Jane Smith',
-    flatNo: 'B-203',
-    date: '2024-03-19',
+    flatNo: 'C-203',
     assignedTo: 'Electrical Team',
     comments: [
-      {
-        id: 1,
-        text: 'Issue reported',
-        date: '2024-03-19',
-        by: 'Admin',
-      },
-      {
-        id: 2,
-        text: 'Electrical team will check tomorrow',
-        date: '2024-03-19',
-        by: 'Electrical Team',
-      },
-    ],
+      { id: 1, text: 'Issue reported', date: '2024-03-14', by: 'Jane Smith' },
+      { id: 2, text: 'Team assigned', date: '2024-03-14', by: 'Admin' },
+      { id: 3, text: 'Parts ordered', date: '2024-03-15', by: 'Electrical Team' }
+    ]
   },
   {
     id: 3,
     title: 'Garbage Collection Issue',
+    description: 'Garbage not being collected regularly in Block B',
     type: 'Housekeeping',
-    description: 'Garbage is not being collected regularly in Block C.',
+    priority: 'Medium',
     status: 'Resolved',
-    priority: 'Low',
+    date: '2024-03-13',
     reportedBy: 'Mike Johnson',
-    flatNo: 'C-305',
-    date: '2024-03-18',
+    flatNo: 'B-305',
     assignedTo: 'Housekeeping Team',
     comments: [
-      {
-        id: 1,
-        text: 'Issue reported',
-        date: '2024-03-18',
-        by: 'Admin',
-      },
-      {
-        id: 2,
-        text: 'Schedule updated for regular collection',
-        date: '2024-03-18',
-        by: 'Housekeeping Team',
-      },
-      {
-        id: 3,
-        text: 'Issue resolved',
-        date: '2024-03-19',
-        by: 'Admin',
-      },
-    ],
-  },
+      { id: 1, text: 'Issue reported', date: '2024-03-13', by: 'Mike Johnson' },
+      { id: 2, text: 'Team assigned', date: '2024-03-13', by: 'Admin' },
+      { id: 3, text: 'Schedule updated', date: '2024-03-14', by: 'Housekeeping Team' },
+      { id: 4, text: 'Issue resolved', date: '2024-03-15', by: 'Admin' }
+    ]
+  }
 ];
 
+const gradient = 'linear-gradient(135deg, #e3ecfa 0%, #f9e7f7 100%)';
+
 const Complaints = () => {
+  const { userRole } = useUser();
   const [complaints, setComplaints] = useState(mockComplaints);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -138,6 +127,7 @@ const Complaints = () => {
     description: '',
     priority: 'Medium',
     date: new Date().toISOString().split('T')[0],
+    attachment: '',
   });
 
   const handleAddComplaint = async () => {
@@ -151,8 +141,8 @@ const Complaints = () => {
           id: newId,
           ...newComplaint,
           status: 'Pending',
-          reportedBy: 'Current User', // TODO: Get from auth context
-          flatNo: 'Current Flat', // TODO: Get from user profile
+          reportedBy: 'Current User',
+          flatNo: 'Current Flat',
           assignedTo: 'Pending Assignment',
           comments: [],
         },
@@ -165,6 +155,7 @@ const Complaints = () => {
         description: '',
         priority: 'Medium',
         date: new Date().toISOString().split('T')[0],
+        attachment: '',
       });
     } catch (error) {
       console.error('Error adding complaint:', error);
@@ -257,347 +248,331 @@ const Complaints = () => {
     return complaint.status.toLowerCase() === activeTab.toLowerCase();
   });
 
+  const handleOpen = () => setIsAddDialogOpen(true);
+  const handleClose = () => setIsAddDialogOpen(false);
+  const handleChange = (e) => setNewComplaint({ ...newComplaint, [e.target.name]: e.target.value });
+  const handleFile = (e) => setNewComplaint({ ...newComplaint, attachment: e.target.files[0]?.name || '' });
+
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h5">Complaints & Maintenance</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setIsAddDialogOpen(true)}
-        >
-          New Complaint
-        </Button>
-      </Box>
+      <Stack direction="row" alignItems="center" spacing={1} mb={3}>
+        <Avatar sx={{ bgcolor: 'primary.main' }}>
+          <BugReportIcon />
+        </Avatar>
+        <Typography variant="h5" fontWeight={700}>Complaints & Helpdesk</Typography>
+      </Stack>
 
       <Grid container spacing={3}>
-        {/* Complaints List */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 2 }}>
-            <Tabs
-              value={activeTab}
-              onChange={(e, newValue) => setActiveTab(newValue)}
-              sx={{ mb: 2 }}
-            >
-              <Tab
-                label={`All (${complaints.length})`}
-                value="all"
-                icon={<InfoIcon />}
-                iconPosition="start"
-              />
-              <Tab
-                label={`Pending (${complaints.filter((c) => c.status === 'Pending').length})`}
-                value="pending"
-                icon={<PendingIcon />}
-                iconPosition="start"
-              />
-              <Tab
-                label={`In Progress (${complaints.filter((c) => c.status === 'In Progress').length})`}
-                value="in progress"
-                icon={<BuildIcon />}
-                iconPosition="start"
-              />
-              <Tab
-                label={`Resolved (${complaints.filter((c) => c.status === 'Resolved').length})`}
-                value="resolved"
-                icon={<CheckCircleIcon />}
-                iconPosition="start"
-              />
-            </Tabs>
-            <List>
-              {filteredComplaints.map((complaint) => (
-                <React.Fragment key={complaint.id}>
-                  <ListItem
-                    alignItems="flex-start"
-                    sx={{
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                  >
-                    <ListItemIcon>{getTypeIcon(complaint.type)}</ListItemIcon>
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="subtitle1">{complaint.title}</Typography>
-                          <Chip
-                            label={complaint.priority}
-                            size="small"
-                            color={getPriorityColor(complaint.priority)}
-                          />
-                          <Chip
-                            label={complaint.status}
-                            size="small"
-                            color={getStatusColor(complaint.status)}
-                          />
-                        </Box>
-                      }
-                      secondary={
-                        <>
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.primary"
-                          >
-                            {complaint.type} • {complaint.flatNo} • {complaint.date}
-                          </Typography>
-                          <Typography variant="body2" sx={{ mt: 1 }}>
-                            {complaint.description}
-                          </Typography>
-                        </>
-                      }
-                    />
-                    <ListItemSecondaryAction>
-                      <IconButton
-                        edge="end"
-                        onClick={() => {
-                          setSelectedComplaint(complaint);
-                          setIsViewDialogOpen(true);
-                        }}
-                        sx={{ mr: 1 }}
-                      >
-                        <ViewIcon />
-                      </IconButton>
-                      <IconButton edge="end" sx={{ mr: 1 }}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        edge="end"
-                        onClick={() => handleDeleteComplaint(complaint.id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                  <Divider component="li" />
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
+        {/* Stats Cards */}
+        <Grid item xs={12} md={4}>
+          <Fade in timeout={600}>
+            <Card sx={{ 
+              borderRadius: 3, 
+              boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
+              background: gradient,
+              transition: 'transform 0.2s',
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Avatar sx={{ bgcolor: 'primary.main' }}>
+                    <BugReportIcon />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6" fontWeight={700}>Total Complaints</Typography>
+                    <Typography variant="h4">{complaints.length}</Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Fade>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Fade in timeout={600} style={{ transitionDelay: '100ms' }}>
+            <Card sx={{ 
+              borderRadius: 3, 
+              boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
+              background: gradient,
+              transition: 'transform 0.2s',
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Avatar sx={{ bgcolor: 'warning.main' }}>
+                    <PendingIcon />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6" fontWeight={700}>Pending</Typography>
+                    <Typography variant="h4">{complaints.filter(c => c.status === 'Pending').length}</Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Fade>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Fade in timeout={600} style={{ transitionDelay: '200ms' }}>
+            <Card sx={{ 
+              borderRadius: 3, 
+              boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
+              background: gradient,
+              transition: 'transform 0.2s',
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Avatar sx={{ bgcolor: 'success.main' }}>
+                    <CheckCircleIcon />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6" fontWeight={700}>Resolved</Typography>
+                    <Typography variant="h4">{complaints.filter(c => c.status === 'Resolved').length}</Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Fade>
         </Grid>
 
-        {/* Statistics */}
-        <Grid item xs={12} md={4}>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <BugReportIcon color="primary" sx={{ mr: 1 }} />
-                    <Typography variant="h6">Total Complaints</Typography>
-                  </Box>
-                  <Typography variant="h4">{complaints.length}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <PendingIcon color="error" sx={{ mr: 1 }} />
-                    <Typography variant="h6">Pending</Typography>
-                  </Box>
-                  <Typography variant="h4">
-                    {complaints.filter((c) => c.status === 'Pending').length}
+        {/* Complaints List */}
+        <Grid item xs={12}>
+          <Card sx={{ borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)' }}>
+            <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Stack direction="row" spacing={1}>
+                <Button 
+                  variant={activeTab === 'all' ? 'contained' : 'outlined'} 
+                  onClick={() => setActiveTab('all')}
+                >
+                  All
+                </Button>
+                <Button 
+                  variant={activeTab === 'pending' ? 'contained' : 'outlined'} 
+                  onClick={() => setActiveTab('pending')}
+                >
+                  Pending
+                </Button>
+                <Button 
+                  variant={activeTab === 'in progress' ? 'contained' : 'outlined'} 
+                  onClick={() => setActiveTab('in progress')}
+                >
+                  In Progress
+                </Button>
+                <Button 
+                  variant={activeTab === 'resolved' ? 'contained' : 'outlined'} 
+                  onClick={() => setActiveTab('resolved')}
+                >
+                  Resolved
+                </Button>
+              </Stack>
+              {userRole === 'user' && (
+                <Button 
+                  variant="contained" 
+                  startIcon={<AddIcon />}
+                  onClick={handleOpen}
+                  sx={{ 
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600
+                  }}
+                >
+                  Raise Complaint
+                </Button>
+              )}
+            </Box>
+            <Divider />
+            <List>
+              {filteredComplaints.length === 0 ? (
+                <Box sx={{ py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <SmileIcon color="primary" sx={{ fontSize: 48, mb: 1 }} />
+                  <Typography variant="body2" color="text.secondary">
+                    No complaints found.
                   </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <CheckCircleIcon color="success" sx={{ mr: 1 }} />
-                    <Typography variant="h6">Resolved</Typography>
-                  </Box>
-                  <Typography variant="h4">
-                    {complaints.filter((c) => c.status === 'Resolved').length}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+                  {userRole === 'user' && (
+                    <Button variant="contained" onClick={handleOpen}>Raise Complaint</Button>
+                  )}
+                </Box>
+              ) : (
+                filteredComplaints.map((complaint, idx) => (
+                  <Fade in timeout={600} style={{ transitionDelay: `${idx * 100}ms` }} key={complaint.id}>
+                    <ListItem 
+                      sx={{ 
+                        transition: 'all 0.2s',
+                        '&:hover': { 
+                          backgroundColor: 'action.hover',
+                          transform: 'translateX(8px)'
+                        }
+                      }}
+                    >
+                      <ListItemIcon>
+                        <Avatar sx={{ bgcolor: 'primary.main' }}>
+                          {getTypeIcon(complaint.type)}
+                        </Avatar>
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="subtitle1" fontWeight={600}>
+                              {complaint.title}
+                            </Typography>
+                            <Chip 
+                              label={complaint.priority} 
+                              color={getPriorityColor(complaint.priority)} 
+                              size="small"
+                            />
+                            <Chip 
+                              label={complaint.status} 
+                              color={getStatusColor(complaint.status)} 
+                              size="small"
+                            />
+                          </Box>
+                        }
+                        secondary={
+                          <Stack direction="row" spacing={2} alignItems="center">
+                            <Typography variant="body2">{complaint.description}</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <TimeIcon fontSize="small" color="action" />
+                              <Typography variant="caption" color="text.secondary">
+                                {complaint.date}
+                              </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <PersonIcon fontSize="small" color="action" />
+                              <Typography variant="caption" color="text.secondary">
+                                {complaint.reportedBy}
+                              </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <CommentIcon fontSize="small" color="action" />
+                              <Typography variant="caption" color="text.secondary">
+                                {complaint.comments.length} comments
+                              </Typography>
+                            </Stack>
+                          </Stack>
+                        }
+                      />
+                      <ListItemSecondaryAction>
+                        <Stack direction="row" spacing={1}>
+                          <Tooltip title="View Details">
+                            <IconButton edge="end" size="small">
+                              <ViewIcon />
+                            </IconButton>
+                          </Tooltip>
+                          {userRole === 'admin' && (
+                            <>
+                              <Tooltip title="Edit Complaint">
+                                <IconButton edge="end" size="small">
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Delete Complaint">
+                                <IconButton edge="end" size="small" color="error">
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </>
+                          )}
+                        </Stack>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  </Fade>
+                ))
+              )}
+            </List>
+          </Card>
         </Grid>
       </Grid>
 
-      {/* Add Complaint Dialog */}
-      <Dialog
-        open={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
+      <Dialog 
+        open={isAddDialogOpen} 
+        onClose={handleClose}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3 }
+        }}
       >
-        <DialogTitle>New Complaint</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Title"
-                value={newComplaint.title}
-                onChange={(e) =>
-                  setNewComplaint({ ...newComplaint, title: e.target.value })
-                }
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Type</InputLabel>
-                <Select
-                  value={newComplaint.type}
-                  onChange={(e) =>
-                    setNewComplaint({ ...newComplaint, type: e.target.value })
-                  }
-                  label="Type"
-                  required
-                >
-                  <MenuItem value="Maintenance">Maintenance</MenuItem>
-                  <MenuItem value="Infrastructure">Infrastructure</MenuItem>
-                  <MenuItem value="Housekeeping">Housekeeping</MenuItem>
-                  <MenuItem value="Security">Security</MenuItem>
-                  <MenuItem value="Other">Other</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Priority</InputLabel>
-                <Select
-                  value={newComplaint.priority}
-                  onChange={(e) =>
-                    setNewComplaint({ ...newComplaint, priority: e.target.value })
-                  }
-                  label="Priority"
-                >
-                  <MenuItem value="High">High</MenuItem>
-                  <MenuItem value="Medium">Medium</MenuItem>
-                  <MenuItem value="Low">Low</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Description"
-                multiline
-                rows={4}
-                value={newComplaint.description}
-                onChange={(e) =>
-                  setNewComplaint({ ...newComplaint, description: e.target.value })
-                }
-                required
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+        <DialogTitle sx={{ fontWeight: 700 }}>Raise New Complaint</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <TextField
+            label="Title"
+            name="title"
+            value={newComplaint.title}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+          />
+          <TextField
+            label="Description"
+            name="description"
+            value={newComplaint.description}
+            onChange={handleChange}
+            fullWidth
+            multiline
+            rows={3}
+            variant="outlined"
+          />
+          <FormControl fullWidth>
+            <InputLabel>Type</InputLabel>
+            <Select
+              name="type"
+              value={newComplaint.type}
+              onChange={handleChange}
+              label="Type"
+            >
+              <MenuItem value="Maintenance">Maintenance</MenuItem>
+              <MenuItem value="Infrastructure">Infrastructure</MenuItem>
+              <MenuItem value="Housekeeping">Housekeeping</MenuItem>
+              <MenuItem value="Security">Security</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel>Priority</InputLabel>
+            <Select
+              name="priority"
+              value={newComplaint.priority}
+              onChange={handleChange}
+              label="Priority"
+            >
+              <MenuItem value="High">High</MenuItem>
+              <MenuItem value="Medium">Medium</MenuItem>
+              <MenuItem value="Low">Low</MenuItem>
+            </Select>
+          </FormControl>
           <Button
-            variant="contained"
-            onClick={handleAddComplaint}
-            disabled={isSubmitting}
-            startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
+            variant="outlined"
+            component="label"
+            startIcon={<AttachFileIcon />}
+            sx={{ mt: 1 }}
           >
-            Submit Complaint
+            Attach File
+            <input
+              type="file"
+              hidden
+              onChange={handleFile}
+            />
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* View Complaint Dialog */}
-      <Dialog
-        open={isViewDialogOpen}
-        onClose={() => setIsViewDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Complaint Details</DialogTitle>
-        <DialogContent>
-          {selectedComplaint && (
-            <Box sx={{ mt: 1 }}>
-              <Typography variant="h6" gutterBottom>
-                {selectedComplaint.title}
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <Chip
-                  icon={getTypeIcon(selectedComplaint.type)}
-                  label={selectedComplaint.type}
-                  size="small"
-                />
-                <Chip
-                  label={selectedComplaint.priority}
-                  size="small"
-                  color={getPriorityColor(selectedComplaint.priority)}
-                />
-                <Chip
-                  label={selectedComplaint.status}
-                  size="small"
-                  color={getStatusColor(selectedComplaint.status)}
-                />
-              </Box>
-              <Typography variant="body1" paragraph>
-                {selectedComplaint.description}
-              </Typography>
-              <Typography variant="subtitle2" gutterBottom>
-                Details
-              </Typography>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  Reported by: {selectedComplaint.reportedBy}
-                </Typography>
-                <Typography variant="body2">
-                  Flat No: {selectedComplaint.flatNo}
-                </Typography>
-                <Typography variant="body2">
-                  Date: {selectedComplaint.date}
-                </Typography>
-                <Typography variant="body2">
-                  Assigned to: {selectedComplaint.assignedTo}
-                </Typography>
-              </Box>
-              <Typography variant="subtitle2" gutterBottom>
-                Comments
-              </Typography>
-              <List>
-                {selectedComplaint.comments.map((comment) => (
-                  <ListItem key={comment.id}>
-                    <ListItemText
-                      primary={comment.text}
-                      secondary={`${comment.by} • ${comment.date}`}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-              {selectedComplaint.status !== 'Resolved' && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Update Status
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      color="warning"
-                      onClick={() => handleStatusChange(selectedComplaint.id, 'In Progress')}
-                      disabled={selectedComplaint.status === 'In Progress'}
-                    >
-                      Mark In Progress
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="success"
-                      onClick={() => handleStatusChange(selectedComplaint.id, 'Resolved')}
-                      disabled={selectedComplaint.status === 'Resolved'}
-                    >
-                      Mark Resolved
-                    </Button>
-                  </Box>
-                </Box>
-              )}
-            </Box>
+          {newComplaint.attachment && (
+            <Typography variant="caption" color="text.secondary">
+              Selected file: {newComplaint.attachment}
+            </Typography>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleClose}>Cancel</Button>
+          {userRole === 'user' && (
+            <Button 
+              onClick={handleAddComplaint} 
+              variant="contained"
+              disabled={isSubmitting}
+              sx={{ 
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600
+              }}
+            >
+              {isSubmitting ? <CircularProgress size={24} /> : 'Submit Complaint'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>

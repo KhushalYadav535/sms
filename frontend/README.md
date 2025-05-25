@@ -1,12 +1,40 @@
-# React + Vite
+# Society Management System (Frontend)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, professional, and beautiful dashboard for society/apartment management, built with React and Material-UI.
 
-Currently, two official plugins are available:
+## Features
+- Role-based dashboard (Admin/User)
+- Member management (add, edit, view, delete)
+- Accounting (transactions, dues, income/expense)
+- Reports & analytics (downloadable reports)
+- Notices & communication (admin/user views)
+- Complaints & helpdesk (user/admin workflows)
+- Profile & settings pages
+- Responsive sidebar/topbar with branding
+- Modern UI/UX: gradients, cards, animations, empty states
+- Ready for backend API integration
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Tech Stack
+- React 18+
+- Material-UI (MUI) 5+
+- React Router 6+
+- Context API for user/role
+- (Optional) Redux for auth
 
-## Expanding the ESLint configuration
+## Getting Started
+1. Clone this repo
+2. `cd frontend`
+3. `npm install`
+4. `npm start`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Customization
+- Update society name/logo in `Layout.jsx`
+- Connect to your backend API (replace mock data and TODOs)
+- Add authentication and real user management
+
+## Folder Structure
+- `src/components/` — All main modules and UI components
+- `src/context/` — User context for role-based UI
+
+## License
+MIT

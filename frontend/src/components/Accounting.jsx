@@ -27,6 +27,11 @@ import {
   Chip,
   InputAdornment,
   CircularProgress,
+  Avatar,
+  Stack,
+  Fade,
+  Divider,
+  Zoom,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,7 +41,75 @@ import {
   AccountBalance as AccountBalanceIcon,
   Payment as PaymentIcon,
   Warning as WarningIcon,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  MonetizationOn as MoneyIcon,
+  ArrowDownward as ArrowDownwardIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  SentimentSatisfiedAlt as SmileIcon,
+  TrendingFlat as TrendingFlatIcon,
 } from '@mui/icons-material';
+import { useUser } from '../context/UserContext';
+
+const statGradients = [
+  'linear-gradient(135deg, #6a93f8 0%, #4f7cf7 100%)',
+  'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+  'linear-gradient(135deg, #f7971e 0%, #ffd200 100%)',
+  'linear-gradient(135deg, #f857a6 0%, #ff5858 100%)',
+];
+
+const StatCard = ({ title, value, icon, gradient, trend, delay }) => (
+  <Fade in timeout={600} style={{ transitionDelay: `${delay}ms` }}>
+    <Card
+      elevation={0}
+      sx={{
+        background: gradient,
+        color: '#fff',
+        borderRadius: 3,
+        p: 0,
+        minHeight: 120,
+        boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        border: '2px solid',
+        borderImage: `linear-gradient(135deg, #6a93f8 0%, #f857a6 100%) 1`,
+        transition: 'box-shadow 0.2s, transform 0.2s',
+        '&:hover': { boxShadow: '0 6px 24px 0 rgba(80,80,200,0.16)', transform: 'scale(1.03)' },
+      }}
+    >
+      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
+        <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: '#fff', mr: 2 }}>
+          {icon}
+        </Avatar>
+        <Box>
+          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            {title}
+          </Typography>
+          <Typography variant="h5" fontWeight="bold">
+            {value}
+          </Typography>
+          {trend !== undefined && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+              {trend > 0 ? (
+                <TrendingUpIcon fontSize="small" sx={{ color: '#b6ffb0', mr: 0.5 }} />
+              ) : trend < 0 ? (
+                <TrendingDownIcon fontSize="small" sx={{ color: '#ffd6d6', mr: 0.5 }} />
+              ) : (
+                <TrendingFlatIcon fontSize="small" sx={{ color: '#fff', mr: 0.5 }} />
+              )}
+              <Typography variant="caption" sx={{ color: '#fff', opacity: 0.8 }}>
+                {trend === 0 ? 'No change' : `${Math.abs(trend)}% from last month`}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
+  </Fade>
+);
 
 // Mock data - replace with actual API data
 const mockTransactions = [
@@ -81,7 +154,17 @@ const mockDues = [
   // Add more mock data as needed
 ];
 
+const mockIncome = [
+  { id: 1, type: 'Maintenance', amount: 5000, date: '2024-05-01' },
+  { id: 2, type: 'Parking', amount: 1200, date: '2024-05-03' },
+];
+const mockExpense = [
+  { id: 1, type: 'Security', amount: 2000, date: '2024-05-02' },
+  { id: 2, type: 'Repairs', amount: 800, date: '2024-05-04' },
+];
+
 const Accounting = () => {
+  const { userRole } = useUser();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,6 +184,42 @@ const Accounting = () => {
     amount: '',
     date: new Date().toISOString().split('T')[0],
   });
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ type: '', amount: '', date: '' });
+  const [income, setIncome] = useState(mockIncome);
+  const [expense, setExpense] = useState(mockExpense);
+  const [tab, setTab] = useState('income');
+
+  const statCards = [
+    {
+      title: 'Total Balance',
+      value: '₹1,25,000',
+      icon: <AccountBalanceIcon />,
+      gradient: statGradients[0],
+      trend: 4,
+    },
+    {
+      title: 'Monthly Collection',
+      value: '₹45,000',
+      icon: <PaymentIcon />,
+      gradient: statGradients[1],
+      trend: 2,
+    },
+    {
+      title: 'Pending Dues',
+      value: '₹12,500',
+      icon: <WarningIcon />,
+      gradient: statGradients[2],
+      trend: -1,
+    },
+    {
+      title: 'Total Transactions',
+      value: '156',
+      icon: <ReceiptIcon />,
+      gradient: statGradients[3],
+      trend: 0,
+    },
+  ];
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -150,6 +269,19 @@ const Accounting = () => {
     }
   };
 
+  const handleOpen = (type) => {
+    setTab(type);
+    setForm({ type: '', amount: '', date: '' });
+    setOpen(true);
+  };
+  const handleClose = () => setOpen(false);
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleSave = () => {
+    if (tab === 'income') setIncome([...income, { ...form, id: Date.now() }]);
+    else setExpense([...expense, { ...form, id: Date.now() }]);
+    setOpen(false);
+  };
+
   const filteredTransactions = mockTransactions.filter((transaction) =>
     Object.values(transaction).some((value) =>
       value.toString().toLowerCase().includes(searchQuery.toLowerCase())
@@ -158,156 +290,224 @@ const Accounting = () => {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 3 }}>
-        Accounting
-      </Typography>
-
-      {/* Summary Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <AccountBalanceIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Total Balance</Typography>
-              </Box>
-              <Typography variant="h4">₹1,25,000</Typography>
-              <Typography variant="body2" color="text.secondary">
-                As of {new Date().toLocaleDateString()}
-              </Typography>
-            </CardContent>
+      <Stack direction="row" alignItems="center" spacing={1} mb={3}>
+        <Avatar sx={{ bgcolor: 'primary.main' }}>
+          <MoneyIcon />
+        </Avatar>
+        <Typography variant="h5" fontWeight={700}>Accounting</Typography>
+      </Stack>
+      <Fade in timeout={600}>
+        <Grid container spacing={3} sx={{ mb: 3 }}>
+          {statCards.map((stat, i) => (
+            <Grid item xs={12} sm={6} md={3} key={stat.title}>
+              <StatCard {...stat} delay={i * 100} />
+            </Grid>
+          ))}
+        </Grid>
+      </Fade>
+      {/* Actions */}
+      {userRole === 'admin' && (
+        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setIsAddTransactionOpen(true)}
+          >
+            Add Transaction
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PaymentIcon />}
+            onClick={() => setIsAddPaymentOpen(true)}
+          >
+            Record Payment
+          </Button>
+        </Box>
+      )}
+      {/* Transactions Table */}
+      <Fade in timeout={600}>
+        <Paper sx={{ mb: 3, borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)' }}>
+          <Box sx={{ p: 2, display: 'flex', gap: 2 }}>
+            <TextField
+              fullWidth
+              placeholder="Search transactions..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              variant="outlined"
+            />
+            <IconButton>
+              <FilterIcon />
+            </IconButton>
+          </Box>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Member</TableCell>
+                  <TableCell>Amount</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Description</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredTransactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      <Box sx={{ py: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                        <SmileIcon color="primary" sx={{ fontSize: 48, mb: 1 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          No transactions found.
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredTransactions
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((transaction) => (
+                      <TableRow
+                        key={transaction.id}
+                        hover
+                        sx={{
+                          transition: 'background 0.3s, box-shadow 0.3s',
+                          '&:hover': {
+                            backgroundColor: 'action.selected',
+                            boxShadow: '0 2px 12px 0 rgba(80,80,200,0.10)',
+                          },
+                        }}
+                      >
+                        <TableCell>{transaction.date}</TableCell>
+                        <TableCell>
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <Avatar sx={{ bgcolor: 'secondary.main', width: 28, height: 28 }}>
+                              <ReceiptIcon fontSize="small" />
+                            </Avatar>
+                            <Typography>{transaction.type}</Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>{transaction.member}</TableCell>
+                        <TableCell>₹{transaction.amount}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={transaction.status}
+                            color={transaction.status === 'Paid' ? 'success' : 'warning'}
+                            size="small"
+                            icon={transaction.status === 'Paid' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                          />
+                        </TableCell>
+                        <TableCell>{transaction.description}</TableCell>
+                      </TableRow>
+                    ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={filteredTransactions.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
+        </Paper>
+      </Fade>
+      {/* Income/Expense Tables */}
+      <Grid container spacing={3} sx={{ mt: 4 }}>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ p: 2, borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)', mb: 2, transition: 'box-shadow 0.2s', '&:hover': { boxShadow: '0 6px 24px 0 rgba(80,80,200,0.16)' } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="h6" fontWeight={700}>Income</Typography>
+              {userRole === 'admin' && <Button variant="contained" onClick={() => handleOpen('income')}>Add Income</Button>}
+            </Box>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Amount</TableCell>
+                  <TableCell>Date</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {income.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} align="center">
+                      <Typography variant="body2" color="text.secondary" py={2}>
+                        No income records found.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  income.map((row) => (
+                    <TableRow key={row.id} hover>
+                      <TableCell>{row.type}</TableCell>
+                      <TableCell>{row.amount}</TableCell>
+                      <TableCell>{row.date}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <PaymentIcon color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6">Monthly Collection</Typography>
-              </Box>
-              <Typography variant="h4">₹45,000</Typography>
-              <Typography variant="body2" color="text.secondary">
-                This month
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <WarningIcon color="warning" sx={{ mr: 1 }} />
-                <Typography variant="h6">Pending Dues</Typography>
-              </Box>
-              <Typography variant="h4">₹12,500</Typography>
-              <Typography variant="body2" color="text.secondary">
-                From 5 members
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <ReceiptIcon color="info" sx={{ mr: 1 }} />
-                <Typography variant="h6">Total Transactions</Typography>
-              </Box>
-              <Typography variant="h4">156</Typography>
-              <Typography variant="body2" color="text.secondary">
-                This month
-              </Typography>
-            </CardContent>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ p: 2, borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)', mb: 2, transition: 'box-shadow 0.2s', '&:hover': { boxShadow: '0 6px 24px 0 rgba(80,80,200,0.16)' } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="h6" fontWeight={700}>Expenses</Typography>
+              {userRole === 'admin' && <Button variant="contained" onClick={() => handleOpen('expense')}>Add Expense</Button>}
+            </Box>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Amount</TableCell>
+                  <TableCell>Date</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {expense.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} align="center">
+                      <Typography variant="body2" color="text.secondary" py={2}>
+                        No expense records found.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  expense.map((row) => (
+                    <TableRow key={row.id} hover>
+                      <TableCell>{row.type}</TableCell>
+                      <TableCell>{row.amount}</TableCell>
+                      <TableCell>{row.date}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </Card>
         </Grid>
       </Grid>
-
-      {/* Actions */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setIsAddTransactionOpen(true)}
-        >
-          Add Transaction
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<PaymentIcon />}
-          onClick={() => setIsAddPaymentOpen(true)}
-        >
-          Record Payment
-        </Button>
+      {/* Ledger & Invoice Generation (mock) */}
+      <Box mt={4}>
+        <Typography variant="h6" fontWeight={700}>Ledger & Trial Balance (Mock)</Typography>
+        <Card sx={{ p: 2, mt: 1, borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)' }}>
+          <Typography variant="body2">Total Income: {income.reduce((a, b) => a + Number(b.amount), 0)}</Typography>
+          <Typography variant="body2">Total Expense: {expense.reduce((a, b) => a + Number(b.amount), 0)}</Typography>
+          <Typography variant="body2">Trial Balance: {income.reduce((a, b) => a + Number(b.amount), 0) - expense.reduce((a, b) => a + Number(b.amount), 0)}</Typography>
+        </Card>
+        <Button variant="outlined" sx={{ mt: 2 }}>Generate Invoice (Mock)</Button>
       </Box>
-
-      {/* Transactions Table */}
-      <Paper sx={{ mb: 3 }}>
-        <Box sx={{ p: 2, display: 'flex', gap: 2 }}>
-          <TextField
-            fullWidth
-            placeholder="Search transactions..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <IconButton>
-            <FilterIcon />
-          </IconButton>
-        </Box>
-
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Member</TableCell>
-                <TableCell>Amount</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Description</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredTransactions
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>{transaction.date}</TableCell>
-                    <TableCell>{transaction.type}</TableCell>
-                    <TableCell>{transaction.member}</TableCell>
-                    <TableCell>₹{transaction.amount}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={transaction.status}
-                        color={transaction.status === 'Paid' ? 'success' : 'warning'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>{transaction.description}</TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={filteredTransactions.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </Paper>
-
-      {/* Add Transaction Dialog */}
+      {/* Dialogs */}
       <Dialog
         open={isAddTransactionOpen}
         onClose={() => setIsAddTransactionOpen(false)}
@@ -361,6 +561,7 @@ const Accounting = () => {
                 InputProps={{
                   startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                 }}
+                variant="outlined"
               />
             </Grid>
             <Grid item xs={12}>
@@ -373,6 +574,7 @@ const Accounting = () => {
                 onChange={(e) =>
                   setNewTransaction({ ...newTransaction, description: e.target.value })
                 }
+                variant="outlined"
               />
             </Grid>
             <Grid item xs={12}>
@@ -385,6 +587,7 @@ const Accounting = () => {
                   setNewTransaction({ ...newTransaction, date: e.target.value })
                 }
                 InputLabelProps={{ shrink: true }}
+                variant="outlined"
               />
             </Grid>
           </Grid>
@@ -401,8 +604,6 @@ const Accounting = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Add Payment Dialog */}
       <Dialog
         open={isAddPaymentOpen}
         onClose={() => setIsAddPaymentOpen(false)}
@@ -456,6 +657,7 @@ const Accounting = () => {
                 InputProps={{
                   startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                 }}
+                variant="outlined"
               />
             </Grid>
             <Grid item xs={12}>
@@ -468,6 +670,7 @@ const Accounting = () => {
                   setNewPayment({ ...newPayment, date: e.target.value })
                 }
                 InputLabelProps={{ shrink: true }}
+                variant="outlined"
               />
             </Grid>
           </Grid>
@@ -482,6 +685,18 @@ const Accounting = () => {
           >
             Record Payment
           </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={open} onClose={handleClose}>
+        <DialogTitle>{tab === 'income' ? 'Add Income' : 'Add Expense'}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <TextField label="Type" name="type" value={form.type} onChange={handleChange} fullWidth variant="outlined" />
+          <TextField label="Amount" name="amount" value={form.amount} onChange={handleChange} fullWidth variant="outlined" />
+          <TextField label="Date" name="date" value={form.date} onChange={handleChange} fullWidth type="date" InputLabelProps={{ shrink: true }} variant="outlined" />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleSave} variant="contained">Save</Button>
         </DialogActions>
       </Dialog>
     </Box>

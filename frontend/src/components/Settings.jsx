@@ -16,6 +16,9 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
+  Card,
+  CardContent,
+  Stack,
 } from '@mui/material';
 import { updateUser } from '../store/authSlice';
 
@@ -27,6 +30,9 @@ const Settings = () => {
     smsNotifications: false,
     darkMode: false,
     language: 'English',
+    notifications: true,
+    societyName: 'Green Valley Society',
+    address: '123 Main Street, City',
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -69,116 +75,33 @@ const Settings = () => {
     }
   };
 
+  const handleSave = () => {
+    // TODO: Call API to save settings
+  };
+
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto' }}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Settings
-        </Typography>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
-
-        <List>
-          <ListItem>
-            <ListItemText
-              primary="Email Notifications"
-              secondary="Receive notifications via email"
-            />
-            <ListItemSecondaryAction>
-              <Switch
-                edge="end"
-                checked={settings.emailNotifications}
-                onChange={handleSettingChange('emailNotifications')}
-              />
-            </ListItemSecondaryAction>
-          </ListItem>
-          <Divider />
-          <ListItem>
-            <ListItemText
-              primary="SMS Notifications"
-              secondary="Receive notifications via SMS"
-            />
-            <ListItemSecondaryAction>
-              <Switch
-                edge="end"
-                checked={settings.smsNotifications}
-                onChange={handleSettingChange('smsNotifications')}
-              />
-            </ListItemSecondaryAction>
-          </ListItem>
-          <Divider />
-          <ListItem>
-            <ListItemText
-              primary="Dark Mode"
-              secondary="Enable dark mode theme"
-            />
-            <ListItemSecondaryAction>
-              <Switch
-                edge="end"
-                checked={settings.darkMode}
-                onChange={handleSettingChange('darkMode')}
-              />
-            </ListItemSecondaryAction>
-          </ListItem>
-        </List>
-
-        <Divider sx={{ my: 3 }} />
-
-        <Typography variant="h6" gutterBottom>
-          Change Password
-        </Typography>
-        <form onSubmit={handlePasswordSubmit}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Current Password"
-                name="currentPassword"
-                type="password"
-                value={passwordData.currentPassword}
-                onChange={handlePasswordChange}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="New Password"
-                name="newPassword"
-                type="password"
-                value={passwordData.newPassword}
-                onChange={handlePasswordChange}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Confirm New Password"
-                name="confirmPassword"
-                type="password"
-                value={passwordData.confirmPassword}
-                onChange={handlePasswordChange}
-                required
-              />
-            </Grid>
-          </Grid>
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : null}
-            >
-              Update Password
-            </Button>
-          </Box>
-        </form>
-      </Paper>
+    <Box maxWidth={600} mx="auto" mt={4}>
+      <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
+        <CardContent>
+          <Typography variant="h6" mb={2}>Society Settings</Typography>
+          <TextField label="Society Name" value={settings.societyName} onChange={e => setSettings({ ...settings, societyName: e.target.value })} fullWidth sx={{ mb: 2 }} />
+          <TextField label="Address" value={settings.address} onChange={e => setSettings({ ...settings, address: e.target.value })} fullWidth sx={{ mb: 2 }} />
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="h6" mb={2}>Preferences</Typography>
+          <FormControlLabel
+            control={<Switch checked={settings.notifications} onChange={e => setSettings({ ...settings, notifications: e.target.checked })} />}
+            label="Enable Notifications"
+          />
+          <FormControlLabel
+            control={<Switch checked={settings.darkMode} onChange={e => setSettings({ ...settings, darkMode: e.target.checked })} />}
+            label="Dark Mode (UI only, demo)"
+          />
+          <Stack direction="row" spacing={2} mt={3}>
+            <Button variant="contained" onClick={handleSave}>Save Settings</Button>
+            <Button variant="outlined">Reset</Button>
+          </Stack>
+        </CardContent>
+      </Card>
     </Box>
   );
 };

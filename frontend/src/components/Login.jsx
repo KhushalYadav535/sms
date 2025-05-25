@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
 import {
   Box,
   Paper,
@@ -12,46 +13,79 @@ import {
 } from '@mui/material';
 import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
 
+const ADMIN_EMAIL = 'admin@society.com';
+const ADMIN_PASSWORD = 'admin123';
+
 const Login = () => {
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
   });
-
+  const { setUserRole } = useUser();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
+  const [localError, setLocalError] = useState('');
 
   const handleChange = (e) => {
     setCredentials({
       ...credentials,
       [e.target.name]: e.target.value,
     });
+    setLocalError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     dispatch(loginStart());
+    setLocalError('');
 
+    // Admin login
+    if (
+      credentials.email === ADMIN_EMAIL &&
+      credentials.password === ADMIN_PASSWORD
+    ) {
+      const response = {
+        user: {
+          id: 1,
+          name: 'Admin User',
+          email: ADMIN_EMAIL,
+          role: 'admin',
+        },
+        token: 'dummy-token-123',
+      };
+      dispatch(loginSuccess(response));
+      setUserRole('admin');
+      navigate('/dashboard');
+      return;
+    }
+
+    // User login (any other email/password)
+    if (!credentials.email || !credentials.password) {
+      setLocalError('Please enter email and password.');
+      dispatch(loginFailure('Missing credentials'));
+      return;
+    }
+    // Simulate user login
     try {
-      // TODO: Replace with actual API call
       const response = await new Promise((resolve) => {
         setTimeout(() => {
           resolve({
             user: {
-              id: 1,
-              name: 'Admin User',
+              id: 2,
+              name: 'Normal User',
               email: credentials.email,
-              role: 'admin',
+              role: 'user',
             },
-            token: 'dummy-token-123',
+            token: 'dummy-token-456',
           });
         }, 1000);
       });
-
       dispatch(loginSuccess(response));
-      navigate('/');
+      setUserRole('user');
+      navigate('/dashboard');
     } catch (error) {
+      setLocalError('Login failed.');
       dispatch(loginFailure(error.message));
     }
   };
@@ -84,9 +118,9 @@ const Login = () => {
           Sign in to your account
         </Typography>
 
-        {error && (
+        {(error || localError) && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
+            {localError || error}
           </Alert>
         )}
 
@@ -122,6 +156,11 @@ const Login = () => {
             {loading ? <CircularProgress size={24} /> : 'Sign In'}
           </Button>
         </form>
+        <Box mt={2}>
+          <Typography variant="caption" color="text.secondary">
+            <b>Admin Login:</b> admin@society.com / admin123
+          </Typography>
+        </Box>
       </Paper>
     </Box>
   );

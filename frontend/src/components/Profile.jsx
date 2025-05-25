@@ -1,163 +1,76 @@
 import React, { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import {
-  Box,
-  Paper,
-  Typography,
-  Avatar,
-  TextField,
-  Button,
-  Grid,
-  Divider,
-  CircularProgress,
-  Alert,
-} from '@mui/material';
-import { updateUser } from '../store/authSlice';
+import { Box, Card, CardContent, Typography, Avatar, Button, TextField, Stack, Divider } from '@mui/material';
+import { useUser } from '../context/UserContext';
 
 const Profile = () => {
-  const { user, loading, error } = useSelector((state) => state.auth);
-  const dispatch = useDispatch();
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    address: user?.address || '',
+  const { userRole } = useUser();
+  // Mock user info
+  const [user, setUser] = useState({
+    name: 'Admin User',
+    email: 'admin@society.com',
+    role: userRole,
+    avatar: '',
   });
+  const [editMode, setEditMode] = useState(false);
+  const [passwordMode, setPasswordMode] = useState(false);
+  const [form, setForm] = useState(user);
+  const [password, setPassword] = useState({ old: '', new: '', confirm: '' });
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  // Placeholder for API integration
+  const handleSave = () => {
+    setUser(form);
+    setEditMode(false);
+    // TODO: Call API to update user info
   };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      dispatch(updateUser(formData));
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-    }
+  const handlePasswordChange = () => {
+    // TODO: Call API to change password
+    setPasswordMode(false);
   };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto' }}>
-      <Paper sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <Avatar
-            sx={{
-              width: 100,
-              height: 100,
-              bgcolor: 'secondary.main',
-              fontSize: '2rem',
-              mr: 3,
-            }}
-          >
-            {user?.name?.charAt(0) || 'A'}
-          </Avatar>
-          <Box>
-            <Typography variant="h5" gutterBottom>
-              {user?.name || 'User Profile'}
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {user?.email || 'user@example.com'}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                disabled={!isEditing}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                disabled={!isEditing}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                disabled={!isEditing}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Address"
-                name="address"
-                multiline
-                rows={3}
-                value={formData.address}
-                onChange={handleChange}
-                disabled={!isEditing}
-              />
-            </Grid>
-          </Grid>
-
-          <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-            {isEditing ? (
+    <Box maxWidth={500} mx="auto" mt={4}>
+      <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
+        <CardContent>
+          <Stack alignItems="center" spacing={2}>
+            <Avatar sx={{ width: 80, height: 80, bgcolor: 'primary.main', fontSize: 36 }}>
+              {user.name[0]}
+            </Avatar>
+            {!editMode ? (
               <>
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setFormData({
-                      name: user?.name || '',
-                      email: user?.email || '',
-                      phone: user?.phone || '',
-                      address: user?.address || '',
-                    });
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={loading}
-                  startIcon={loading ? <CircularProgress size={20} /> : null}
-                >
-                  Save Changes
-                </Button>
+                <Typography variant="h6">{user.name}</Typography>
+                <Typography color="text.secondary">{user.email}</Typography>
+                <Typography color="info.main" fontWeight={600}>
+                  {user.role.toUpperCase()}
+                </Typography>
+                <Button variant="outlined" onClick={() => setEditMode(true)} sx={{ mt: 2 }}>Edit Profile</Button>
+                <Button variant="text" onClick={() => setPasswordMode(true)} sx={{ mt: 1 }}>Change Password</Button>
               </>
             ) : (
-              <Button variant="contained" onClick={() => setIsEditing(true)}>
-                Edit Profile
-              </Button>
+              <>
+                <TextField label="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} fullWidth sx={{ mb: 2 }} />
+                <TextField label="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} fullWidth sx={{ mb: 2 }} />
+                <Stack direction="row" spacing={2}>
+                  <Button variant="contained" onClick={handleSave}>Save</Button>
+                  <Button onClick={() => setEditMode(false)}>Cancel</Button>
+                </Stack>
+              </>
             )}
-          </Box>
-        </form>
-      </Paper>
+          </Stack>
+          {passwordMode && (
+            <Box mt={3}>
+              <Divider sx={{ mb: 2 }} />
+              <Typography variant="subtitle1" mb={2}>Change Password</Typography>
+              <TextField label="Old Password" type="password" value={password.old} onChange={e => setPassword({ ...password, old: e.target.value })} fullWidth sx={{ mb: 2 }} />
+              <TextField label="New Password" type="password" value={password.new} onChange={e => setPassword({ ...password, new: e.target.value })} fullWidth sx={{ mb: 2 }} />
+              <TextField label="Confirm New Password" type="password" value={password.confirm} onChange={e => setPassword({ ...password, confirm: e.target.value })} fullWidth sx={{ mb: 2 }} />
+              <Stack direction="row" spacing={2}>
+                <Button variant="contained" onClick={handlePasswordChange}>Change</Button>
+                <Button onClick={() => setPasswordMode(false)}>Cancel</Button>
+              </Stack>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
     </Box>
   );
 };

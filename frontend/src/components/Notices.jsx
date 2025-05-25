@@ -26,6 +26,11 @@ import {
   Divider,
   CircularProgress,
   Alert,
+  Avatar,
+  Stack,
+  Fade,
+  Zoom,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,90 +41,63 @@ import {
   Delete as DeleteIcon,
   Edit as EditIcon,
   Visibility as ViewIcon,
+  Notifications as NotificationsIcon,
+  AccessTime as TimeIcon,
+  Person as PersonIcon,
+  SentimentSatisfiedAlt as SmileIcon,
 } from '@mui/icons-material';
+import { useUser } from '../context/UserContext';
 
 // Mock data - replace with actual API data
 const mockNotices = [
-  {
-    id: 1,
-    title: 'Monthly Maintenance Collection',
-    type: 'Announcement',
-    content: 'Monthly maintenance collection will be held on 1st April 2024. Please ensure timely payment.',
-    date: '2024-03-20',
+  { 
+    id: 1, 
+    title: 'Water Supply Interruption', 
+    message: 'Water supply will be off from 10am-2pm on 10th May.',
+    type: 'Maintenance',
     priority: 'High',
-    status: 'Active',
+    date: '2024-03-15',
+    author: 'Admin',
+    read: false
   },
-  {
-    id: 2,
-    title: 'Society Annual General Meeting',
-    type: 'Event',
-    content: 'Annual General Meeting of the society will be held on 15th April 2024 at 6:00 PM in the community hall.',
-    date: '2024-03-19',
-    priority: 'High',
-    status: 'Active',
+  { 
+    id: 2, 
+    title: 'Fire Drill', 
+    message: 'Fire drill scheduled for 12th May at 4pm.',
+    type: 'Safety',
+    priority: 'Medium',
+    date: '2024-03-14',
+    author: 'Security',
+    read: true
   },
   {
     id: 3,
-    title: 'Water Supply Maintenance',
-    type: 'Maintenance',
-    content: 'Water supply will be temporarily shut down on 25th March 2024 from 10:00 AM to 2:00 PM for maintenance work.',
-    date: '2024-03-18',
-    priority: 'Medium',
-    status: 'Active',
-  },
+    title: 'Society Annual Meeting',
+    message: 'Annual general meeting scheduled for 20th May at 6pm in the community hall.',
+    type: 'Meeting',
+    priority: 'High',
+    date: '2024-03-13',
+    author: 'Secretary',
+    read: false
+  }
 ];
 
+const gradient = 'linear-gradient(135deg, #e3ecfa 0%, #f9e7f7 100%)';
+
 const Notices = () => {
+  const { userRole } = useUser();
+  const [open, setOpen] = useState(false);
   const [notices, setNotices] = useState(mockNotices);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [selectedNotice, setSelectedNotice] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newNotice, setNewNotice] = useState({
-    title: '',
-    type: '',
-    content: '',
-    priority: 'Medium',
-    date: new Date().toISOString().split('T')[0],
-  });
+  const [form, setForm] = useState({ title: '', message: '', type: '', priority: 'Medium' });
+  const [activeTab, setActiveTab] = useState('all');
 
-  const handleAddNotice = async () => {
-    setIsSubmitting(true);
-    try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const newId = Math.max(...notices.map((n) => n.id)) + 1;
-      setNotices([
-        {
-          id: newId,
-          ...newNotice,
-          status: 'Active',
-        },
-        ...notices,
-      ]);
-      setIsAddDialogOpen(false);
-      setNewNotice({
-        title: '',
-        type: '',
-        content: '',
-        priority: 'Medium',
-        date: new Date().toISOString().split('T')[0],
-      });
-    } catch (error) {
-      console.error('Error adding notice:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteNotice = async (id) => {
-    try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setNotices(notices.filter((notice) => notice.id !== id));
-    } catch (error) {
-      console.error('Error deleting notice:', error);
-    }
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleSend = () => {
+    setNotices([...notices, { ...form, id: Date.now(), date: new Date().toISOString().split('T')[0], author: 'Admin', read: false }]);
+    setOpen(false);
+    setForm({ title: '', message: '', type: '', priority: 'Medium' });
   };
 
   const getPriorityColor = (priority) => {
@@ -137,283 +115,301 @@ const Notices = () => {
 
   const getTypeIcon = (type) => {
     switch (type) {
-      case 'Announcement':
-        return <AnnouncementIcon color="primary" />;
-      case 'Event':
-        return <EventIcon color="success" />;
       case 'Maintenance':
         return <WarningIcon color="warning" />;
-      default:
+      case 'Safety':
         return <InfoIcon color="info" />;
+      case 'Meeting':
+        return <EventIcon color="success" />;
+      default:
+        return <AnnouncementIcon color="primary" />;
     }
   };
 
+  const filteredNotices = notices.filter(notice => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'unread') return !notice.read;
+    return notice.type.toLowerCase() === activeTab.toLowerCase();
+  });
+
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h5">Notices & Announcements</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setIsAddDialogOpen(true)}
-        >
-          Add Notice
-        </Button>
-      </Box>
+      <Stack direction="row" alignItems="center" spacing={1} mb={3}>
+        <Avatar sx={{ bgcolor: 'primary.main' }}>
+          <NotificationsIcon />
+        </Avatar>
+        <Typography variant="h5" fontWeight={700}>Notices & Communication</Typography>
+      </Stack>
 
       <Grid container spacing={3}>
-        {/* Active Notices */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Active Notices
-            </Typography>
-            <List>
-              {notices.map((notice) => (
-                <React.Fragment key={notice.id}>
-                  <ListItem
-                    alignItems="flex-start"
-                    sx={{
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                  >
-                    <ListItemIcon>{getTypeIcon(notice.type)}</ListItemIcon>
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="subtitle1">{notice.title}</Typography>
-                          <Chip
-                            label={notice.priority}
-                            size="small"
-                            color={getPriorityColor(notice.priority)}
-                          />
-                        </Box>
-                      }
-                      secondary={
-                        <>
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.primary"
-                          >
-                            {notice.type} • {notice.date}
-                          </Typography>
-                          <Typography variant="body2" sx={{ mt: 1 }}>
-                            {notice.content}
-                          </Typography>
-                        </>
-                      }
-                    />
-                    <ListItemSecondaryAction>
-                      <IconButton
-                        edge="end"
-                        onClick={() => {
-                          setSelectedNotice(notice);
-                          setIsViewDialogOpen(true);
-                        }}
-                        sx={{ mr: 1 }}
-                      >
-                        <ViewIcon />
-                      </IconButton>
-                      <IconButton edge="end" sx={{ mr: 1 }}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        edge="end"
-                        onClick={() => handleDeleteNotice(notice.id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                  <Divider component="li" />
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
+        {/* Stats Cards */}
+        <Grid item xs={12} md={4}>
+          <Fade in timeout={600}>
+            <Card sx={{ 
+              borderRadius: 3, 
+              boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
+              background: gradient,
+              transition: 'transform 0.2s',
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Avatar sx={{ bgcolor: 'primary.main' }}>
+                    <NotificationsIcon />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6" fontWeight={700}>Total Notices</Typography>
+                    <Typography variant="h4">{notices.length}</Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Fade>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Fade in timeout={600} style={{ transitionDelay: '100ms' }}>
+            <Card sx={{ 
+              borderRadius: 3, 
+              boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
+              background: gradient,
+              transition: 'transform 0.2s',
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Avatar sx={{ bgcolor: 'warning.main' }}>
+                    <WarningIcon />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6" fontWeight={700}>High Priority</Typography>
+                    <Typography variant="h4">{notices.filter(n => n.priority === 'High').length}</Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Fade>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Fade in timeout={600} style={{ transitionDelay: '200ms' }}>
+            <Card sx={{ 
+              borderRadius: 3, 
+              boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
+              background: gradient,
+              transition: 'transform 0.2s',
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Avatar sx={{ bgcolor: 'info.main' }}>
+                    <EventIcon />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6" fontWeight={700}>Upcoming Events</Typography>
+                    <Typography variant="h4">{notices.filter(n => n.type === 'Meeting').length}</Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Fade>
         </Grid>
 
-        {/* Notice Statistics */}
-        <Grid item xs={12} md={4}>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <AnnouncementIcon color="primary" sx={{ mr: 1 }} />
-                    <Typography variant="h6">Total Notices</Typography>
-                  </Box>
-                  <Typography variant="h4">{notices.length}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <WarningIcon color="warning" sx={{ mr: 1 }} />
-                    <Typography variant="h6">High Priority</Typography>
-                  </Box>
-                  <Typography variant="h4">
-                    {notices.filter((n) => n.priority === 'High').length}
+        {/* Notices List */}
+        <Grid item xs={12}>
+          <Card sx={{ borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)' }}>
+            <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Stack direction="row" spacing={1}>
+                <Button 
+                  variant={activeTab === 'all' ? 'contained' : 'outlined'} 
+                  onClick={() => setActiveTab('all')}
+                >
+                  All
+                </Button>
+                <Button 
+                  variant={activeTab === 'unread' ? 'contained' : 'outlined'} 
+                  onClick={() => setActiveTab('unread')}
+                >
+                  Unread
+                </Button>
+                <Button 
+                  variant={activeTab === 'meeting' ? 'contained' : 'outlined'} 
+                  onClick={() => setActiveTab('meeting')}
+                >
+                  Meetings
+                </Button>
+              </Stack>
+              {userRole === 'admin' && (
+                <Button 
+                  variant="contained" 
+                  startIcon={<AddIcon />}
+                  onClick={handleOpen}
+                  sx={{ 
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600
+                  }}
+                >
+                  New Notice
+                </Button>
+              )}
+            </Box>
+            <Divider />
+            <List>
+              {filteredNotices.length === 0 ? (
+                <Box sx={{ py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <SmileIcon color="primary" sx={{ fontSize: 48, mb: 1 }} />
+                  <Typography variant="body2" color="text.secondary">
+                    No notices found.
                   </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <EventIcon color="success" sx={{ mr: 1 }} />
-                    <Typography variant="h6">Upcoming Events</Typography>
-                  </Box>
-                  <Typography variant="h4">
-                    {notices.filter((n) => n.type === 'Event').length}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+                  <Button variant="contained" onClick={handleOpen}>Create Notice</Button>
+                </Box>
+              ) : (
+                filteredNotices.map((notice, idx) => (
+                  <Fade in timeout={600} style={{ transitionDelay: `${idx * 100}ms` }} key={notice.id}>
+                    <ListItem 
+                      sx={{ 
+                        transition: 'all 0.2s',
+                        '&:hover': { 
+                          backgroundColor: 'action.hover',
+                          transform: 'translateX(8px)'
+                        }
+                      }}
+                    >
+                      <ListItemIcon>
+                        <Avatar sx={{ bgcolor: notice.read ? 'action.disabled' : 'primary.main' }}>
+                          {getTypeIcon(notice.type)}
+                        </Avatar>
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="subtitle1" fontWeight={notice.read ? 400 : 600}>
+                              {notice.title}
+                            </Typography>
+                            <Chip 
+                              label={notice.priority} 
+                              color={getPriorityColor(notice.priority)} 
+                              size="small"
+                            />
+                          </Box>
+                        }
+                        secondary={
+                          <Stack direction="row" spacing={2} alignItems="center">
+                            <Typography variant="body2">{notice.message}</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <TimeIcon fontSize="small" color="action" />
+                              <Typography variant="caption" color="text.secondary">
+                                {notice.date}
+                              </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <PersonIcon fontSize="small" color="action" />
+                              <Typography variant="caption" color="text.secondary">
+                                {notice.author}
+                              </Typography>
+                            </Stack>
+                          </Stack>
+                        }
+                      />
+                      <ListItemSecondaryAction>
+                        {userRole === 'admin' && (
+                          <Stack direction="row" spacing={1}>
+                            <Tooltip title="View Details">
+                              <IconButton edge="end" size="small">
+                                <ViewIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Edit Notice">
+                              <IconButton edge="end" size="small">
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete Notice">
+                              <IconButton edge="end" size="small" color="error">
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </Stack>
+                        )}
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  </Fade>
+                ))
+              )}
+            </List>
+          </Card>
         </Grid>
       </Grid>
 
-      {/* Add Notice Dialog */}
-      <Dialog
-        open={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
+      <Dialog 
+        open={open} 
+        onClose={handleClose}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3 }
+        }}
       >
-        <DialogTitle>Add New Notice</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Title"
-                value={newNotice.title}
-                onChange={(e) =>
-                  setNewNotice({ ...newNotice, title: e.target.value })
-                }
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Type</InputLabel>
-                <Select
-                  value={newNotice.type}
-                  onChange={(e) =>
-                    setNewNotice({ ...newNotice, type: e.target.value })
-                  }
-                  label="Type"
-                  required
-                >
-                  <MenuItem value="Announcement">Announcement</MenuItem>
-                  <MenuItem value="Event">Event</MenuItem>
-                  <MenuItem value="Maintenance">Maintenance</MenuItem>
-                  <MenuItem value="Other">Other</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Priority</InputLabel>
-                <Select
-                  value={newNotice.priority}
-                  onChange={(e) =>
-                    setNewNotice({ ...newNotice, priority: e.target.value })
-                  }
-                  label="Priority"
-                >
-                  <MenuItem value="High">High</MenuItem>
-                  <MenuItem value="Medium">Medium</MenuItem>
-                  <MenuItem value="Low">Low</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Content"
-                multiline
-                rows={4}
-                value={newNotice.content}
-                onChange={(e) =>
-                  setNewNotice({ ...newNotice, content: e.target.value })
-                }
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Date"
-                type="date"
-                value={newNotice.date}
-                onChange={(e) =>
-                  setNewNotice({ ...newNotice, date: e.target.value })
-                }
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-            </Grid>
-          </Grid>
+        <DialogTitle sx={{ fontWeight: 700 }}>Create New Notice</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <TextField
+            label="Title"
+            name="title"
+            value={form.title}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+          />
+          <TextField
+            label="Message"
+            name="message"
+            value={form.message}
+            onChange={handleChange}
+            fullWidth
+            multiline
+            rows={3}
+            variant="outlined"
+          />
+          <FormControl fullWidth>
+            <InputLabel>Type</InputLabel>
+            <Select
+              name="type"
+              value={form.type}
+              onChange={handleChange}
+              label="Type"
+            >
+              <MenuItem value="Maintenance">Maintenance</MenuItem>
+              <MenuItem value="Safety">Safety</MenuItem>
+              <MenuItem value="Meeting">Meeting</MenuItem>
+              <MenuItem value="General">General</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel>Priority</InputLabel>
+            <Select
+              name="priority"
+              value={form.priority}
+              onChange={handleChange}
+              label="Priority"
+            >
+              <MenuItem value="High">High</MenuItem>
+              <MenuItem value="Medium">Medium</MenuItem>
+              <MenuItem value="Low">Low</MenuItem>
+            </Select>
+          </FormControl>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-          <Button
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button 
+            onClick={handleSend} 
             variant="contained"
-            onClick={handleAddNotice}
-            disabled={isSubmitting}
-            startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
+            sx={{ 
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600
+            }}
           >
-            Add Notice
+            Send Notice
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* View Notice Dialog */}
-      <Dialog
-        open={isViewDialogOpen}
-        onClose={() => setIsViewDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Notice Details</DialogTitle>
-        <DialogContent>
-          {selectedNotice && (
-            <Box sx={{ mt: 1 }}>
-              <Typography variant="h6" gutterBottom>
-                {selectedNotice.title}
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <Chip
-                  icon={getTypeIcon(selectedNotice.type)}
-                  label={selectedNotice.type}
-                  size="small"
-                />
-                <Chip
-                  label={selectedNotice.priority}
-                  size="small"
-                  color={getPriorityColor(selectedNotice.priority)}
-                />
-                <Chip
-                  label={selectedNotice.date}
-                  size="small"
-                  variant="outlined"
-                />
-              </Box>
-              <Typography variant="body1" paragraph>
-                {selectedNotice.content}
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsViewDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>
