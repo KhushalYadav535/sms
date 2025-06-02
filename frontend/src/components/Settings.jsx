@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
@@ -21,19 +21,25 @@ import {
   Stack,
 } from '@mui/material';
 import { updateUser } from '../store/authSlice';
+import { ThemeContext } from '../context/ThemeContext';
 
 const Settings = () => {
   const { user, loading, error } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  const { darkMode, toggleDarkMode } = useContext(ThemeContext);
   const [settings, setSettings] = useState({
     emailNotifications: true,
     smsNotifications: false,
-    darkMode: false,
+    darkMode: darkMode,
     language: 'English',
     notifications: true,
     societyName: 'Green Valley Society',
     address: '123 Main Street, City',
   });
+
+  useEffect(() => {
+    setSettings((prev) => ({ ...prev, darkMode }));
+  }, [darkMode]);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -42,10 +48,14 @@ const Settings = () => {
   });
 
   const handleSettingChange = (setting) => (event) => {
-    setSettings({
-      ...settings,
-      [setting]: event.target.checked,
-    });
+    if (setting === 'darkMode') {
+      toggleDarkMode();
+    } else {
+      setSettings({
+        ...settings,
+        [setting]: event.target.checked,
+      });
+    }
   };
 
   const handlePasswordChange = (e) => {
@@ -93,8 +103,8 @@ const Settings = () => {
             label="Enable Notifications"
           />
           <FormControlLabel
-            control={<Switch checked={settings.darkMode} onChange={e => setSettings({ ...settings, darkMode: e.target.checked })} />}
-            label="Dark Mode (UI only, demo)"
+            control={<Switch checked={settings.darkMode} onChange={handleSettingChange('darkMode')} />}
+            label="Dark Mode"
           />
           <Stack direction="row" spacing={2} mt={3}>
             <Button variant="contained" onClick={handleSave}>Save Settings</Button>
@@ -106,4 +116,3 @@ const Settings = () => {
   );
 };
 
-export default Settings; 

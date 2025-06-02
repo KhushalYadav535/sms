@@ -98,23 +98,27 @@ const Login = () => {
         alignItems: 'center',
         justifyContent: 'center',
         bgcolor: 'background.default',
+        backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       }}
     >
       <Paper
-        elevation={3}
+        elevation={6}
         sx={{
-          p: 4,
+          p: 5,
           width: '100%',
-          maxWidth: 400,
+          maxWidth: 420,
           display: 'flex',
           flexDirection: 'column',
-          gap: 2,
+          gap: 3,
+          borderRadius: 12,
+          boxShadow: '0 12px 24px rgba(0,0,0,0.2)',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
         }}
       >
-        <Typography variant="h5" component="h1" align="center" gutterBottom>
+        <Typography variant="h4" component="h1" align="center" gutterBottom sx={{ fontWeight: 700, color: 'primary.main' }}>
           Society Management System
         </Typography>
-        <Typography variant="subtitle1" align="center" color="text.secondary" gutterBottom>
+        <Typography variant="h6" align="center" color="text.secondary" gutterBottom sx={{ fontWeight: 500 }}>
           Sign in to your account
         </Typography>
 
@@ -156,6 +160,11 @@ const Login = () => {
             {loading ? <CircularProgress size={24} /> : 'Sign In'}
           </Button>
         </form>
+        <Box mt={2} textAlign="center">
+          <Typography variant="caption" color="text.secondary">
+            Don't have an account? <a href="/register">Register here</a>
+          </Typography>
+        </Box>
         <Box mt={2}>
           <Typography variant="caption" color="text.secondary">
             <b>Admin Login:</b> admin@society.com / admin123

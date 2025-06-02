@@ -159,7 +159,7 @@ function Layout() {
           <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>{user?.name?.charAt(0) || 'A'}</Avatar>
           <Box>
             <Typography variant="body2" fontWeight={700}>{user?.email || 'jamesbrown@example.com'}</Typography>
-            <Typography variant="caption" color="text.secondary">Admin</Typography>
+            <Typography variant="caption" color="text.secondary">{userRole === 'admin' ? 'Admin' : 'User'}</Typography>
           </Box>
         </Box>
       </Drawer>
@@ -210,6 +210,15 @@ function Layout() {
             <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', ml: 1 }}>
               {user?.name?.charAt(0) || 'A'}
             </Avatar>
+            <Button
+              variant="text"
+              color="primary"
+              startIcon={<ExitToApp />}
+              onClick={handleLogout}
+              sx={{ ml: 2, textTransform: 'none', fontWeight: 600 }}
+            >
+              Logout
+            </Button>
           </Box>
         </Toolbar>
       </AppBar>

@@ -52,26 +52,30 @@ const Register = () => {
         alignItems: 'center',
         justifyContent: 'center',
         bgcolor: 'background.default',
+        backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       }}
     >
       <Paper
-        elevation={3}
+        elevation={6}
         sx={{
-          p: 4,
+          p: 5,
           width: '100%',
-          maxWidth: 400,
+          maxWidth: 420,
           display: 'flex',
           flexDirection: 'column',
-          gap: 2,
+          gap: 3,
+          borderRadius: 12,
+          boxShadow: '0 12px 24px rgba(0,0,0,0.2)',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
         }}
       >
-        <Typography variant="h5" component="h1" align="center" gutterBottom>
+        <Typography variant="h4" component="h1" align="center" gutterBottom sx={{ fontWeight: 700, color: 'primary.main' }}>
           Register as User
         </Typography>
-        <Typography variant="subtitle1" align="center" color="text.secondary" gutterBottom>
+        <Typography variant="h6" align="center" color="text.secondary" gutterBottom sx={{ fontWeight: 500 }}>
           Create your account
         </Typography>
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <form onSubmit={handleSubmit}>
           <TextField
             fullWidth
@@ -112,7 +116,7 @@ const Register = () => {
             Register
           </Button>
         </form>
-        <Box mt={2}>
+        <Box mt={2} textAlign="center">
           <Typography variant="caption" color="text.secondary">
             Already have an account? <a href="/login">Login</a>
           </Typography>

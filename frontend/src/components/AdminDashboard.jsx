@@ -38,7 +38,7 @@ const quickActions = [
 
 const StatCard = ({ title, value, icon, color }) => (
   <Fade in timeout={600}>
-    <Card sx={{ ...glass, borderRadius: 4, p: 0, minHeight: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px) scale(1.03)', boxShadow: '0 12px 32px 0 rgba(31,38,135,0.16)' } }}>
+    <Card sx={{ ...glass, borderRadius: 0, p: 2, minHeight: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px) scale(1.03)', boxShadow: '0 12px 32px 0 rgba(31,38,135,0.16)' } }}>
       <CardContent>
         <Stack direction="row" alignItems="center" spacing={2}>
           <Avatar sx={{ bgcolor: `${color}.main`, width: 48, height: 48, boxShadow: 2 }}>{icon}</Avatar>
@@ -63,7 +63,7 @@ const AdminDashboard = () => (
       <Grid item xs={12} md={3}><StatCard title="Notices" value={mockData.totalNotices} icon={<Notifications />} color="secondary" /></Grid>
     </Grid>
     {/* Quick Actions */}
-    <Card sx={{ ...glass, borderRadius: 4, mt: 4, mb: 2, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+    <Card sx={{ ...glass, borderRadius: 0, mt: 4, mb: 2, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
       <Stack direction="row" spacing={4} alignItems="center" justifyContent="center" width="100%">
         {quickActions.map((action) => (
           <Tooltip title={action.label} key={action.label} arrow>
@@ -73,7 +73,7 @@ const AdminDashboard = () => (
       </Stack>
     </Card>
     {/* Recent Activity Timeline */}
-    <Card sx={{ ...glass, borderRadius: 4, mt: 4 }}>
+    <Card sx={{ ...glass, borderRadius: 0, mt: 4 }}>
       <CardContent>
         <Typography variant="h6" fontWeight={700} mb={2}>Recent Activity</Typography>
         <Stack spacing={3}>
