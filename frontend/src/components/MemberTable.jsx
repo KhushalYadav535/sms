@@ -43,34 +43,11 @@ import {
   Visibility as ViewIcon,
 } from '@mui/icons-material';
 import { useUser } from '../context/UserContext';
-
-// Mock data - replace with actual API data
-const mockMembers = [
-  {
-    id: 1,
-    name: 'John Doe',
-    flatNo: '101',
-    block: 'A',
-    phone: '+91 9876543210',
-    email: 'john@example.com',
-    status: 'Active',
-    joinDate: '2023-01-15',
-  },
-  {
-    id: 2,
-    name: 'Jane Smith',
-    flatNo: '202',
-    block: 'B',
-    phone: '+91 9876543211',
-    email: 'jane@example.com',
-    status: 'Active',
-    joinDate: '2023-02-20',
-  },
-  // Add more mock data as needed
-];
+import { fetchMembers, addMember, updateMember, deleteMember } from '../api';
 
 const MemberTable = () => {
   const { userRole } = useUser();
+  const [members, setMembers] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,15 +58,19 @@ const MemberTable = () => {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [newMember, setNewMember] = useState({
     name: '',
-    flatNo: '',
-    block: '',
-    phone: '',
     email: '',
-    status: 'Active',
-    joinDate: new Date().toISOString().split('T')[0],
+    password: '',
+    house_number: '',
+    phone_number: '',
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  React.useEffect(() => {
+    fetchMembers().then((data) => {
+      setMembers(Array.isArray(data) ? data : []);
+    });
+  }, []);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -123,14 +104,32 @@ const MemberTable = () => {
     setIsViewDialogOpen(true);
   };
 
-  const handleEditMember = () => {
-    handleMemberMenuClose();
-    // TODO: Implement edit functionality
+  const handleEditMember = async () => {
+    if (!selectedMember) return;
+    setIsSubmitting(true);
+    try {
+      const updated = await updateMember(selectedMember.id, selectedMember);
+      setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      setIsViewDialogOpen(false);
+    } catch (error) {
+      console.error('Error updating member:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDeleteMember = () => {
-    handleMemberMenuClose();
-    // TODO: Implement delete functionality
+  const handleDeleteMember = async () => {
+    if (!selectedMember) return;
+    setIsSubmitting(true);
+    try {
+      await deleteMember(selectedMember.id);
+      setMembers((prev) => prev.filter((m) => m.id !== selectedMember.id));
+      setIsViewDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting member:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleNewMemberChange = (e) => {
@@ -151,14 +150,17 @@ const MemberTable = () => {
   const validateForm = () => {
     const errors = {};
     if (!newMember.name.trim()) errors.name = 'Name is required';
-    if (!newMember.flatNo.trim()) errors.flatNo = 'Flat number is required';
-    if (!newMember.block.trim()) errors.block = 'Block is required';
-    if (!newMember.phone.trim()) errors.phone = 'Phone number is required';
-    if (!newMember.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(newMember.email)) {
-      errors.email = 'Email is invalid';
+    if (!newMember.email.trim()) errors.email = 'Email is required';
+    if (!newMember.password.trim()) errors.password = 'Password is required';
+    if (!newMember.house_number.trim()) errors.house_number = 'House number is required';
+    if (!newMember.phone_number.trim()) errors.phone_number = 'Phone number is required';
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (newMember.email && !emailRegex.test(newMember.email)) {
+      errors.email = 'Invalid email format';
     }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -168,20 +170,15 @@ const MemberTable = () => {
 
     setIsSubmitting(true);
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // Add the new member to the list
-      const newId = Math.max(...mockMembers.map((m) => m.id)) + 1;
-      mockMembers.push({ ...newMember, id: newId });
+      const created = await addMember(newMember);
+      setMembers((prev) => [...prev, created]);
       setIsAddDialogOpen(false);
       setNewMember({
         name: '',
-        flatNo: '',
-        block: '',
-        phone: '',
         email: '',
-        status: 'Active',
-        joinDate: new Date().toISOString().split('T')[0],
+        password: '',
+        house_number: '',
+        phone_number: '',
       });
     } catch (error) {
       console.error('Error adding member:', error);
@@ -190,7 +187,7 @@ const MemberTable = () => {
     }
   };
 
-  const filteredMembers = mockMembers.filter((member) =>
+  const filteredMembers = members.filter((member) =>
     Object.values(member).some((value) =>
       value.toString().toLowerCase().includes(searchQuery.toLowerCase())
     )
@@ -453,46 +450,9 @@ const MemberTable = () => {
                       onChange={handleNewMemberChange}
                       error={!!formErrors.name}
                       helperText={formErrors.name}
-                      required
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Flat Number"
-                      name="flatNo"
-                      value={newMember.flatNo}
-                      onChange={handleNewMemberChange}
-                      error={!!formErrors.flatNo}
-                      helperText={formErrors.flatNo}
-                      required
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Block"
-                      name="block"
-                      value={newMember.block}
-                      onChange={handleNewMemberChange}
-                      error={!!formErrors.block}
-                      helperText={formErrors.block}
-                      required
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Phone Number"
-                      name="phone"
-                      value={newMember.phone}
-                      onChange={handleNewMemberChange}
-                      error={!!formErrors.phone}
-                      helperText={formErrors.phone}
-                      required
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <TextField
                       fullWidth
                       label="Email"
@@ -502,45 +462,52 @@ const MemberTable = () => {
                       onChange={handleNewMemberChange}
                       error={!!formErrors.email}
                       helperText={formErrors.email}
-                      required
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>Status</InputLabel>
-                      <Select
-                        name="status"
-                        value={newMember.status}
-                        onChange={handleNewMemberChange}
-                        label="Status"
-                      >
-                        <MenuItem value="Active">Active</MenuItem>
-                        <MenuItem value="Inactive">Inactive</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="Join Date"
-                      name="joinDate"
-                      type="date"
-                      value={newMember.joinDate}
+                      label="Password"
+                      name="password"
+                      type="password"
+                      value={newMember.password}
                       onChange={handleNewMemberChange}
-                      InputLabelProps={{ shrink: true }}
+                      error={!!formErrors.password}
+                      helperText={formErrors.password}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="House Number"
+                      name="house_number"
+                      value={newMember.house_number}
+                      onChange={handleNewMemberChange}
+                      error={!!formErrors.house_number}
+                      helperText={formErrors.house_number}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Phone Number"
+                      name="phone_number"
+                      value={newMember.phone_number}
+                      onChange={handleNewMemberChange}
+                      error={!!formErrors.phone_number}
+                      helperText={formErrors.phone_number}
                     />
                   </Grid>
                 </Grid>
               </DialogContent>
               <DialogActions>
                 <Button onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button
-                  variant="contained"
-                  onClick={handleAddMember}
+                <Button 
+                  onClick={handleAddMember} 
+                  variant="contained" 
                   disabled={isSubmitting}
-                  startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
                 >
-                  Add Member
+                  {isSubmitting ? <CircularProgress size={24} /> : 'Add Member'}
                 </Button>
               </DialogActions>
             </Dialog>
@@ -551,4 +518,4 @@ const MemberTable = () => {
   );
 };
 
-export default MemberTable; 
+export default MemberTable;

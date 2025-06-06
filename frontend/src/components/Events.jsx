@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -55,75 +55,10 @@ import {
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DateCalendar } from '@mui/x-date-pickers';
 import { format, isSameDay, parseISO } from 'date-fns';
-
-// Mock data - replace with actual API data
-const mockEvents = [
-  {
-    id: 1,
-    title: 'Annual General Meeting',
-    type: 'Meeting',
-    description: 'Annual General Meeting of the society to discuss important matters and elect new committee members.',
-    date: '2024-04-15',
-    time: '18:00',
-    location: 'Community Hall',
-    status: 'Upcoming',
-    organizer: 'Society Committee',
-    maxParticipants: 100,
-    participants: [
-      { id: 1, name: 'John Doe', flatNo: 'A-101' },
-      { id: 2, name: 'Jane Smith', flatNo: 'B-203' },
-      { id: 3, name: 'Mike Johnson', flatNo: 'C-305' },
-    ],
-    agenda: [
-      'Welcome Address',
-      'Previous Minutes Review',
-      'Financial Report',
-      'Committee Elections',
-      'Open Discussion',
-    ],
-  },
-  {
-    id: 2,
-    title: 'Diwali Celebration',
-    type: 'Festival',
-    description: 'Join us for a grand Diwali celebration with cultural programs, dinner, and fireworks.',
-    date: '2024-11-12',
-    time: '19:00',
-    location: 'Society Garden',
-    status: 'Upcoming',
-    organizer: 'Cultural Committee',
-    maxParticipants: 200,
-    participants: [
-      { id: 1, name: 'John Doe', flatNo: 'A-101' },
-      { id: 2, name: 'Jane Smith', flatNo: 'B-203' },
-    ],
-    agenda: [
-      'Cultural Programs',
-      'Dinner',
-      'Fireworks Display',
-    ],
-  },
-  {
-    id: 3,
-    title: 'Maintenance Collection',
-    type: 'Administrative',
-    description: 'Monthly maintenance collection for April 2024.',
-    date: '2024-04-01',
-    time: '10:00',
-    location: 'Society Office',
-    status: 'Upcoming',
-    organizer: 'Treasurer',
-    maxParticipants: 50,
-    participants: [],
-    agenda: [
-      'Maintenance Collection',
-      'Issue Receipts',
-    ],
-  },
-];
+import { fetchEvents, addEvent, deleteEvent } from '../api';
 
 const Events = () => {
-  const [events, setEvents] = useState(mockEvents);
+  const [events, setEvents] = useState([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -145,22 +80,15 @@ const Events = () => {
     reminderTime: '1', // hours before event
   });
 
+  useEffect(() => {
+    fetchEvents().then(setEvents);
+  }, []);
+
   const handleAddEvent = async () => {
     setIsSubmitting(true);
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const newId = Math.max(...events.map((e) => e.id)) + 1;
-      setEvents([
-        {
-          id: newId,
-          ...newEvent,
-          status: 'Upcoming',
-          organizer: 'Current User', // TODO: Get from auth context
-          participants: [],
-        },
-        ...events,
-      ]);
+      const created = await addEvent(newEvent);
+      setEvents((prev) => [...prev, created]);
       setIsAddDialogOpen(false);
       setNewEvent({
         title: '',
@@ -183,9 +111,8 @@ const Events = () => {
 
   const handleDeleteEvent = async (id) => {
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setEvents(events.filter((event) => event.id !== id));
+      await deleteEvent(id);
+      setEvents((prev) => prev.filter((e) => e.id !== id));
     } catch (error) {
       console.error('Error deleting event:', error);
     }
@@ -933,4 +860,4 @@ const Events = () => {
   );
 };
 
-export default Events; 
+export default Events;

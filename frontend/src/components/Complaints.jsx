@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -55,67 +55,13 @@ import {
   Comment as CommentIcon,
 } from '@mui/icons-material';
 import { useUser } from '../context/UserContext';
-
-// Mock data - replace with actual API data
-const mockComplaints = [
-  {
-    id: 1,
-    title: 'Water Leakage in Block A',
-    description: 'Water leaking from ceiling in flat 101, Block A',
-    type: 'Maintenance',
-    priority: 'High',
-    status: 'Pending',
-    date: '2024-03-15',
-    reportedBy: 'John Doe',
-    flatNo: 'A-101',
-    assignedTo: 'Maintenance Team',
-    comments: [
-      { id: 1, text: 'Issue reported', date: '2024-03-15', by: 'John Doe' },
-      { id: 2, text: 'Team assigned', date: '2024-03-15', by: 'Admin' }
-    ]
-  },
-  {
-    id: 2,
-    title: 'Broken Street Light',
-    description: 'Street light not working near Block C entrance',
-    type: 'Infrastructure',
-    priority: 'Medium',
-    status: 'In Progress',
-    date: '2024-03-14',
-    reportedBy: 'Jane Smith',
-    flatNo: 'C-203',
-    assignedTo: 'Electrical Team',
-    comments: [
-      { id: 1, text: 'Issue reported', date: '2024-03-14', by: 'Jane Smith' },
-      { id: 2, text: 'Team assigned', date: '2024-03-14', by: 'Admin' },
-      { id: 3, text: 'Parts ordered', date: '2024-03-15', by: 'Electrical Team' }
-    ]
-  },
-  {
-    id: 3,
-    title: 'Garbage Collection Issue',
-    description: 'Garbage not being collected regularly in Block B',
-    type: 'Housekeeping',
-    priority: 'Medium',
-    status: 'Resolved',
-    date: '2024-03-13',
-    reportedBy: 'Mike Johnson',
-    flatNo: 'B-305',
-    assignedTo: 'Housekeeping Team',
-    comments: [
-      { id: 1, text: 'Issue reported', date: '2024-03-13', by: 'Mike Johnson' },
-      { id: 2, text: 'Team assigned', date: '2024-03-13', by: 'Admin' },
-      { id: 3, text: 'Schedule updated', date: '2024-03-14', by: 'Housekeeping Team' },
-      { id: 4, text: 'Issue resolved', date: '2024-03-15', by: 'Admin' }
-    ]
-  }
-];
+import { fetchComplaints, addComplaint, updateComplaintStatus, deleteComplaint } from '../api';
 
 const gradient = 'linear-gradient(135deg, #e3ecfa 0%, #f9e7f7 100%)';
 
 const Complaints = () => {
-  const { userRole } = useUser();
-  const [complaints, setComplaints] = useState(mockComplaints);
+  const { user } = useUser();
+  const [complaints, setComplaints] = useState([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
@@ -130,24 +76,20 @@ const Complaints = () => {
     attachment: '',
   });
 
+  useEffect(() => {
+    fetchComplaints().then(setComplaints);
+  }, []);
+
   const handleAddComplaint = async () => {
     setIsSubmitting(true);
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const newId = Math.max(...complaints.map((c) => c.id)) + 1;
-      setComplaints([
-        {
-          id: newId,
-          ...newComplaint,
-          status: 'Pending',
-          reportedBy: 'Current User',
-          flatNo: 'Current Flat',
-          assignedTo: 'Pending Assignment',
-          comments: [],
-        },
-        ...complaints,
-      ]);
+      const complaintData = {
+        title: newComplaint.title,
+        content: newComplaint.description, // use 'content' for backend
+        user_id: user.id
+      };
+      const created = await addComplaint(complaintData);
+      setComplaints((prev) => [...prev, created]);
       setIsAddDialogOpen(false);
       setNewComplaint({
         title: '',
@@ -165,41 +107,13 @@ const Complaints = () => {
   };
 
   const handleDeleteComplaint = async (id) => {
-    try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setComplaints(complaints.filter((complaint) => complaint.id !== id));
-    } catch (error) {
-      console.error('Error deleting complaint:', error);
-    }
+    await deleteComplaint(id);
+    setComplaints((prev) => prev.filter((c) => c.id !== id));
   };
 
   const handleStatusChange = async (id, newStatus) => {
-    try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setComplaints(
-        complaints.map((complaint) =>
-          complaint.id === id
-            ? {
-                ...complaint,
-                status: newStatus,
-                comments: [
-                  ...complaint.comments,
-                  {
-                    id: complaint.comments.length + 1,
-                    text: `Status changed to ${newStatus}`,
-                    date: new Date().toISOString().split('T')[0],
-                    by: 'Admin',
-                  },
-                ],
-              }
-            : complaint
-        )
-      );
-    } catch (error) {
-      console.error('Error updating status:', error);
-    }
+    await updateComplaintStatus(id, newStatus);
+    setComplaints((prev) => prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c)));
   };
 
   const getPriorityColor = (priority) => {
@@ -259,27 +173,33 @@ const Complaints = () => {
         <Avatar sx={{ bgcolor: 'primary.main' }}>
           <BugReportIcon />
         </Avatar>
-        <Typography variant="h5" fontWeight={700}>Complaints & Helpdesk</Typography>
+        <Typography variant="h5" fontWeight={700}>
+          Complaints & Helpdesk
+        </Typography>
       </Stack>
 
       <Grid container spacing={3}>
         {/* Stats Cards */}
         <Grid item xs={12} md={4}>
           <Fade in timeout={600}>
-            <Card sx={{ 
-              borderRadius: 3, 
-              boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
-              background: gradient,
-              transition: 'transform 0.2s',
-              '&:hover': { transform: 'translateY(-4px)' }
-            }}>
+            <Card
+              sx={{
+                borderRadius: 3,
+                boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
+                background: gradient,
+                transition: 'transform 0.2s',
+                '&:hover': { transform: 'translateY(-4px)' },
+              }}
+            >
               <CardContent>
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Avatar sx={{ bgcolor: 'primary.main' }}>
                     <BugReportIcon />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6" fontWeight={700}>Total Complaints</Typography>
+                    <Typography variant="h6" fontWeight={700}>
+                      Total Complaints
+                    </Typography>
                     <Typography variant="h4">{complaints.length}</Typography>
                   </Box>
                 </Stack>
@@ -289,21 +209,27 @@ const Complaints = () => {
         </Grid>
         <Grid item xs={12} md={4}>
           <Fade in timeout={600} style={{ transitionDelay: '100ms' }}>
-            <Card sx={{ 
-              borderRadius: 3, 
-              boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
-              background: gradient,
-              transition: 'transform 0.2s',
-              '&:hover': { transform: 'translateY(-4px)' }
-            }}>
+            <Card
+              sx={{
+                borderRadius: 3,
+                boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
+                background: gradient,
+                transition: 'transform 0.2s',
+                '&:hover': { transform: 'translateY(-4px)' },
+              }}
+            >
               <CardContent>
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Avatar sx={{ bgcolor: 'warning.main' }}>
                     <PendingIcon />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6" fontWeight={700}>Pending</Typography>
-                    <Typography variant="h4">{complaints.filter(c => c.status === 'Pending').length}</Typography>
+                    <Typography variant="h6" fontWeight={700}>
+                      Pending
+                    </Typography>
+                    <Typography variant="h4">
+                      {complaints.filter((c) => c.status === 'Pending').length}
+                    </Typography>
                   </Box>
                 </Stack>
               </CardContent>
@@ -312,21 +238,27 @@ const Complaints = () => {
         </Grid>
         <Grid item xs={12} md={4}>
           <Fade in timeout={600} style={{ transitionDelay: '200ms' }}>
-            <Card sx={{ 
-              borderRadius: 3, 
-              boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
-              background: gradient,
-              transition: 'transform 0.2s',
-              '&:hover': { transform: 'translateY(-4px)' }
-            }}>
+            <Card
+              sx={{
+                borderRadius: 3,
+                boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)',
+                background: gradient,
+                transition: 'transform 0.2s',
+                '&:hover': { transform: 'translateY(-4px)' },
+              }}
+            >
               <CardContent>
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Avatar sx={{ bgcolor: 'success.main' }}>
                     <CheckCircleIcon />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6" fontWeight={700}>Resolved</Typography>
-                    <Typography variant="h4">{complaints.filter(c => c.status === 'Resolved').length}</Typography>
+                    <Typography variant="h6" fontWeight={700}>
+                      Resolved
+                    </Typography>
+                    <Typography variant="h4">
+                      {complaints.filter((c) => c.status === 'Resolved').length}
+                    </Typography>
                   </Box>
                 </Stack>
               </CardContent>
@@ -339,40 +271,40 @@ const Complaints = () => {
           <Card sx={{ borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(80,80,200,0.08)' }}>
             <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Stack direction="row" spacing={1}>
-                <Button 
-                  variant={activeTab === 'all' ? 'contained' : 'outlined'} 
+                <Button
+                  variant={activeTab === 'all' ? 'contained' : 'outlined'}
                   onClick={() => setActiveTab('all')}
                 >
                   All
                 </Button>
-                <Button 
-                  variant={activeTab === 'pending' ? 'contained' : 'outlined'} 
+                <Button
+                  variant={activeTab === 'pending' ? 'contained' : 'outlined'}
                   onClick={() => setActiveTab('pending')}
                 >
                   Pending
                 </Button>
-                <Button 
-                  variant={activeTab === 'in progress' ? 'contained' : 'outlined'} 
+                <Button
+                  variant={activeTab === 'in progress' ? 'contained' : 'outlined'}
                   onClick={() => setActiveTab('in progress')}
                 >
                   In Progress
                 </Button>
-                <Button 
-                  variant={activeTab === 'resolved' ? 'contained' : 'outlined'} 
+                <Button
+                  variant={activeTab === 'resolved' ? 'contained' : 'outlined'}
                   onClick={() => setActiveTab('resolved')}
                 >
                   Resolved
                 </Button>
               </Stack>
-              {userRole === 'user' && (
-                <Button 
-                  variant="contained" 
+              {user.role === 'user' && (
+                <Button
+                  variant="contained"
                   startIcon={<AddIcon />}
                   onClick={handleOpen}
-                  sx={{ 
+                  sx={{
                     borderRadius: 2,
                     textTransform: 'none',
-                    fontWeight: 600
+                    fontWeight: 600,
                   }}
                 >
                   Raise Complaint
@@ -382,13 +314,23 @@ const Complaints = () => {
             <Divider />
             <List>
               {filteredComplaints.length === 0 ? (
-                <Box sx={{ py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <Box
+                  sx={{
+                    py: 6,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
+                  }}
+                >
                   <SmileIcon color="primary" sx={{ fontSize: 48, mb: 1 }} />
                   <Typography variant="body2" color="text.secondary">
                     No complaints found.
                   </Typography>
-                  {userRole === 'user' && (
-                    <Button variant="contained" onClick={handleOpen}>Raise Complaint</Button>
+                  {user.role === 'user' && (
+                    <Button variant="contained" onClick={handleOpen}>
+                      Raise Complaint
+                    </Button>
                   )}
                 </Box>
               ) : (
@@ -404,21 +346,16 @@ const Complaints = () => {
                       }}
                     >
                       <ListItemIcon>
-                        <Avatar sx={{ bgcolor: 'primary.main' }}>
-                          {getTypeIcon(complaint.type)}
+                        <Avatar sx={{ bgcolor: getStatusColor(complaint.status) }}>
+                          {getTypeIcon(complaint.type || 'General')}
                         </Avatar>
                       </ListItemIcon>
                       <ListItemText
                         primary={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="subtitle1" fontWeight={600}>
+                            <Typography variant="subtitle1" fontWeight={700}>
                               {complaint.title}
                             </Typography>
-                            <Chip 
-                              label={complaint.priority} 
-                              color={getPriorityColor(complaint.priority)} 
-                              size="small"
-                            />
                             <Chip 
                               label={complaint.status} 
                               color={getStatusColor(complaint.status)} 
@@ -432,19 +369,7 @@ const Complaints = () => {
                             <Stack direction="row" spacing={1} alignItems="center">
                               <TimeIcon fontSize="small" color="action" />
                               <Typography variant="caption" color="text.secondary">
-                                {complaint.date}
-                              </Typography>
-                            </Stack>
-                            <Stack direction="row" spacing={1} alignItems="center">
-                              <PersonIcon fontSize="small" color="action" />
-                              <Typography variant="caption" color="text.secondary">
-                                {complaint.reportedBy}
-                              </Typography>
-                            </Stack>
-                            <Stack direction="row" spacing={1} alignItems="center">
-                              <CommentIcon fontSize="small" color="action" />
-                              <Typography variant="caption" color="text.secondary">
-                                {complaint.comments.length} comments
+                                {new Date(complaint.date).toLocaleDateString()}
                               </Typography>
                             </Stack>
                           </Stack>
@@ -457,7 +382,7 @@ const Complaints = () => {
                               <ViewIcon />
                             </IconButton>
                           </Tooltip>
-                          {userRole === 'admin' && (
+                          {user.role === 'admin' && (
                             <>
                               <Tooltip title="Edit Complaint">
                                 <IconButton edge="end" size="small">
@@ -465,7 +390,12 @@ const Complaints = () => {
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Delete Complaint">
-                                <IconButton edge="end" size="small" color="error">
+                                <IconButton 
+                                  edge="end" 
+                                  size="small" 
+                                  color="error"
+                                  onClick={() => handleDeleteComplaint(complaint.id)}
+                                >
                                   <DeleteIcon />
                                 </IconButton>
                               </Tooltip>
@@ -482,13 +412,13 @@ const Complaints = () => {
         </Grid>
       </Grid>
 
-      <Dialog 
-        open={isAddDialogOpen} 
+      <Dialog
+        open={isAddDialogOpen}
         onClose={handleClose}
         maxWidth="sm"
         fullWidth
         PaperProps={{
-          sx: { borderRadius: 3 }
+          sx: { borderRadius: 3 },
         }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>Raise New Complaint</DialogTitle>
@@ -559,15 +489,15 @@ const Complaints = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={handleClose}>Cancel</Button>
-          {userRole === 'user' && (
-            <Button 
-              onClick={handleAddComplaint} 
+          {user.role === 'user' && (
+            <Button
+              onClick={handleAddComplaint}
               variant="contained"
               disabled={isSubmitting}
-              sx={{ 
+              sx={{
                 borderRadius: 2,
                 textTransform: 'none',
-                fontWeight: 600
+                fontWeight: 600,
               }}
             >
               {isSubmitting ? <CircularProgress size={24} /> : 'Submit Complaint'}
@@ -579,4 +509,4 @@ const Complaints = () => {
   );
 };
 
-export default Complaints; 
+export default Complaints;

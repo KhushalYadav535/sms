@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -12,20 +12,31 @@ import {
   Alert,
 } from '@mui/material';
 import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
-
-const ADMIN_EMAIL = 'admin@society.com';
-const ADMIN_PASSWORD = 'admin123';
+import { login } from '../api';
 
 const Login = () => {
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
   });
-  const { setUserRole } = useUser();
+  const { setUser, setUserRole } = useUser();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
   const [localError, setLocalError] = useState('');
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
+    if (token) {
+      const userRole = localStorage.getItem('userRole');
+      if (userRole === 'admin') {
+        navigate('/admin-dashboard');
+      } else {
+        navigate('/user-dashboard');
+      }
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     setCredentials({
@@ -40,53 +51,29 @@ const Login = () => {
     dispatch(loginStart());
     setLocalError('');
 
-    // Admin login
-    if (
-      credentials.email === ADMIN_EMAIL &&
-      credentials.password === ADMIN_PASSWORD
-    ) {
-      const response = {
-        user: {
-          id: 1,
-          name: 'Admin User',
-          email: ADMIN_EMAIL,
-          role: 'admin',
-        },
-        token: 'dummy-token-123',
-      };
-      dispatch(loginSuccess(response));
-      setUserRole('admin');
-      navigate('/dashboard');
-      return;
-    }
-
-    // User login (any other email/password)
     if (!credentials.email || !credentials.password) {
       setLocalError('Please enter email and password.');
       dispatch(loginFailure('Missing credentials'));
       return;
     }
-    // Simulate user login
+
     try {
-      const response = await new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            user: {
-              id: 2,
-              name: 'Normal User',
-              email: credentials.email,
-              role: 'user',
-            },
-            token: 'dummy-token-456',
-          });
-        }, 1000);
-      });
+      const response = await login(credentials);
+      // Save user info to context and localStorage
+      setUser(response.user);
+      setUserRole(response.user.role);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('userRole', response.user.role);
+      localStorage.setItem('token', response.token);
       dispatch(loginSuccess(response));
-      setUserRole('user');
-      navigate('/dashboard');
+      if (response.user.role === 'admin') {
+        navigate('/admin-dashboard');
+      } else {
+        navigate('/user-dashboard');
+      }
     } catch (error) {
-      setLocalError('Login failed.');
-      dispatch(loginFailure(error.message));
+      setLocalError(error.message || 'Login failed');
+      dispatch(loginFailure(error.message || 'Login failed'));
     }
   };
 
@@ -165,14 +152,9 @@ const Login = () => {
             Don't have an account? <a href="/register">Register here</a>
           </Typography>
         </Box>
-        <Box mt={2}>
-          <Typography variant="caption" color="text.secondary">
-            <b>Admin Login:</b> admin@society.com / admin123
-          </Typography>
-        </Box>
       </Paper>
     </Box>
   );
 };
 
-export default Login; 
+export default Login;

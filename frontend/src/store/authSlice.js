@@ -21,7 +21,13 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.user = action.payload.user;
       state.token = action.payload.token;
-      localStorage.setItem('token', action.payload.token);
+      if (action.payload.token) {
+        localStorage.setItem('token', action.payload.token);
+      }
+      if (action.payload.user) {
+        localStorage.setItem('user', JSON.stringify(action.payload.user));
+        localStorage.setItem('userRole', action.payload.user.role);
+      }
     },
     loginFailure: (state, action) => {
       state.loading = false;
@@ -40,4 +46,4 @@ const authSlice = createSlice({
 });
 
 export const { loginStart, loginSuccess, loginFailure, logout, updateUser } = authSlice.actions;
-export default authSlice.reducer; 
+export default authSlice.reducer;

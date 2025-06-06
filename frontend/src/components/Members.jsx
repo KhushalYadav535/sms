@@ -1,18 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Card, Avatar, Stack, Fade } from '@mui/material';
 import { People as PeopleIcon, Person as PersonIcon, Phone as PhoneIcon, SentimentSatisfiedAlt as SmileIcon } from '@mui/icons-material';
-
-const mockMembers = [
-  { id: 1, flat: 'A-101', owner: 'John Doe', contact: '9876543210', dues: 1200 },
-  { id: 2, flat: 'A-102', owner: 'Jane Smith', contact: '9876543211', dues: 0 },
-  { id: 3, flat: 'B-201', owner: 'Amit Kumar', contact: '9876543212', dues: 500 },
-];
+import { fetchMembers, addMember, updateMember, deleteMember } from '../api';
 
 const Members = () => {
   const [open, setOpen] = useState(false);
-  const [members, setMembers] = useState(mockMembers);
+  const [members, setMembers] = useState([]);
   const [form, setForm] = useState({ flat: '', owner: '', contact: '', dues: '' });
   const [editId, setEditId] = useState(null);
+
+  useEffect(() => {
+    fetchMembers().then(setMembers);
+  }, []);
 
   const handleOpen = (member) => {
     if (member) {
@@ -26,13 +25,19 @@ const Members = () => {
   };
   const handleClose = () => setOpen(false);
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editId) {
-      setMembers(members.map(m => m.id === editId ? { ...form, id: editId } : m));
+      const updated = await updateMember(editId, form);
+      setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
     } else {
-      setMembers([...members, { ...form, id: Date.now() }]);
+      const created = await addMember(form);
+      setMembers((prev) => [...prev, created]);
     }
     setOpen(false);
+  };
+  const handleDelete = async (id) => {
+    await deleteMember(id);
+    setMembers((prev) => prev.filter((m) => m.id !== id));
   };
 
   return (
@@ -106,6 +111,7 @@ const Members = () => {
                       </TableCell>
                       <TableCell>
                         <Button size="small" onClick={() => handleOpen(row)}>Edit</Button>
+                        <Button size="small" color="error" onClick={() => handleDelete(row.id)}>Delete</Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -132,4 +138,4 @@ const Members = () => {
   );
 };
 
-export default Members; 
+export default Members;

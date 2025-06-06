@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -47,57 +47,33 @@ import {
   SentimentSatisfiedAlt as SmileIcon,
 } from '@mui/icons-material';
 import { useUser } from '../context/UserContext';
-
-// Mock data - replace with actual API data
-const mockNotices = [
-  { 
-    id: 1, 
-    title: 'Water Supply Interruption', 
-    message: 'Water supply will be off from 10am-2pm on 10th May.',
-    type: 'Maintenance',
-    priority: 'High',
-    date: '2024-03-15',
-    author: 'Admin',
-    read: false
-  },
-  { 
-    id: 2, 
-    title: 'Fire Drill', 
-    message: 'Fire drill scheduled for 12th May at 4pm.',
-    type: 'Safety',
-    priority: 'Medium',
-    date: '2024-03-14',
-    author: 'Security',
-    read: true
-  },
-  {
-    id: 3,
-    title: 'Society Annual Meeting',
-    message: 'Annual general meeting scheduled for 20th May at 6pm in the community hall.',
-    type: 'Meeting',
-    priority: 'High',
-    date: '2024-03-13',
-    author: 'Secretary',
-    read: false
-  }
-];
+import { fetchNotices, addNotice, deleteNotice } from '../api';
 
 const gradient = 'linear-gradient(135deg, #e3ecfa 0%, #f9e7f7 100%)';
 
 const Notices = () => {
   const { userRole } = useUser();
+  const [notices, setNotices] = useState([]);
   const [open, setOpen] = useState(false);
-  const [notices, setNotices] = useState(mockNotices);
-  const [form, setForm] = useState({ title: '', message: '', type: '', priority: 'Medium' });
+  const [form, setForm] = useState({ title: '', content: '' });
   const [activeTab, setActiveTab] = useState('all');
+
+  useEffect(() => {
+    fetchNotices().then(setNotices);
+  }, []);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-  const handleSend = () => {
-    setNotices([...notices, { ...form, id: Date.now(), date: new Date().toISOString().split('T')[0], author: 'Admin', read: false }]);
+  const handleSend = async () => {
+    const created = await addNotice(form);
+    setNotices((prev) => [...prev, created]);
     setOpen(false);
-    setForm({ title: '', message: '', type: '', priority: 'Medium' });
+    setForm({ title: '', content: '' });
+  };
+  const handleDelete = async (id) => {
+    await deleteNotice(id);
+    setNotices((prev) => prev.filter((n) => n.id !== id));
   };
 
   const getPriorityColor = (priority) => {
@@ -324,7 +300,7 @@ const Notices = () => {
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Delete Notice">
-                              <IconButton edge="end" size="small" color="error">
+                              <IconButton edge="end" size="small" color="error" onClick={() => handleDelete(notice.id)}>
                                 <DeleteIcon />
                               </IconButton>
                             </Tooltip>
@@ -360,9 +336,9 @@ const Notices = () => {
             variant="outlined"
           />
           <TextField
-            label="Message"
-            name="message"
-            value={form.message}
+            label="Content"
+            name="content"
+            value={form.content}
             onChange={handleChange}
             fullWidth
             multiline
@@ -416,4 +392,4 @@ const Notices = () => {
   );
 };
 
-export default Notices; 
+export default Notices;

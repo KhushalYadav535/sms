@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import { updateUser } from '../store/authSlice';
 import { ThemeContext } from '../context/ThemeContext';
+import { fetchSettings, updateSettings } from '../api';
 
 const Settings = () => {
   const { user, loading, error } = useSelector((state) => state.auth);
@@ -46,6 +47,13 @@ const Settings = () => {
     newPassword: '',
     confirmPassword: '',
   });
+
+  useEffect(() => {
+    fetchSettings().then((data) => {
+      // Map API data to settings state if needed
+      // setSettings(...)
+    });
+  }, []);
 
   const handleSettingChange = (setting) => (event) => {
     if (setting === 'darkMode') {
@@ -85,8 +93,9 @@ const Settings = () => {
     }
   };
 
-  const handleSave = () => {
-    // TODO: Call API to save settings
+  const handleSaveSettings = async () => {
+    await updateSettings(settings);
+    // Optionally show success message
   };
 
   return (
@@ -107,7 +116,7 @@ const Settings = () => {
             label="Dark Mode"
           />
           <Stack direction="row" spacing={2} mt={3}>
-            <Button variant="contained" onClick={handleSave}>Save Settings</Button>
+            <Button variant="contained" onClick={handleSaveSettings}>Save Settings</Button>
             <Button variant="outlined">Reset</Button>
           </Stack>
         </CardContent>
@@ -115,4 +124,4 @@ const Settings = () => {
     </Box>
   );
 };
-
+export default Settings;
