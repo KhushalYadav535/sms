@@ -1,0 +1,1 @@
+ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'user', 'treasure', 'security', 'secretary') DEFAULT 'user'; 

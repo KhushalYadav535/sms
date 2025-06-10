@@ -132,8 +132,8 @@ const AdminDashboard = () => {
       const updatedDashboardData = {
         stats: {
           ...dashboardResponse.data.stats,
-          totalIncome: accountingResponse.data.totalIncome || 0,
-          totalExpenses: accountingResponse.data.totalExpenses || 0
+          totalIncome: accountingResponse.data.total_income || 0,
+          totalExpenses: accountingResponse.data.total_expense || 0
         },
         recentUsers: dashboardResponse.data.recentUsers,
         recentComplaints: dashboardResponse.data.recentComplaints
@@ -193,7 +193,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       setError('');
-      const response = await axios.post('/users', newUser);
+      const response = await axios.post('/api/users', newUser);
       if (response.data) {
         setSuccess('User created successfully');
         setShowAddUser(false);

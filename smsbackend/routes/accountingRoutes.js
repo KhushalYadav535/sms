@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../config/db');
 const authMiddleware = require('../middleware/authMiddleware');
 const ensureAdmin = require('../middleware/ensureAdmin');
+const ensureTreasure = require('../middleware/ensureTreasure');
 const accountingController = require('../controllers/accountingController');
 
 // Protected routes
@@ -86,8 +87,8 @@ router.get('/expenses', async (req, res) => {
   }
 });
 
-// Admin only routes
-router.use(ensureAdmin);
+// Treasure and Admin only routes
+router.use(ensureTreasure);
 
 // Add new transaction
 router.post('/', async (req, res) => {

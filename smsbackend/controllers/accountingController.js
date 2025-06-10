@@ -71,7 +71,7 @@ exports.getStats = async (req, res) => {
       FROM accounting 
       WHERE type = 'income'
     `);
-    const totalIncome = parseFloat(incomeResult[0].total) || 0;
+    const total_income = parseFloat(incomeResult[0].total) || 0;
 
     // Get total expenses
     const [expenseResult] = await pool.query(`
@@ -79,23 +79,105 @@ exports.getStats = async (req, res) => {
       FROM accounting 
       WHERE type = 'expense'
     `);
-    const totalExpenses = parseFloat(expenseResult[0].total) || 0;
+    const total_expense = parseFloat(expenseResult[0].total) || 0;
 
-    // Calculate balance
-    const balance = totalIncome - totalExpenses;
-
-    // Get recent transactions
-    const [recentTransactions] = await pool.query(`
-      SELECT * FROM accounting 
-      ORDER BY date DESC, created_at DESC 
-      LIMIT 10
+    // Get monthly income
+    const [monthlyIncomeResult] = await pool.query(`
+      SELECT COALESCE(SUM(amount), 0) as total 
+      FROM accounting 
+      WHERE type = 'income'
+      AND MONTH(date) = MONTH(CURRENT_DATE())
+      AND YEAR(date) = YEAR(CURRENT_DATE())
     `);
+    const monthly_income = parseFloat(monthlyIncomeResult[0].total) || 0;
 
+    // Get last month's income
+    const [lastMonthIncomeResult] = await pool.query(`
+      SELECT COALESCE(SUM(amount), 0) as total 
+      FROM accounting 
+      WHERE type = 'income'
+      AND MONTH(date) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+      AND YEAR(date) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+    `);
+    const last_month_income = parseFloat(lastMonthIncomeResult[0].total) || 0;
+
+    // Get monthly expenses
+    const [monthlyExpenseResult] = await pool.query(`
+      SELECT COALESCE(SUM(amount), 0) as total 
+      FROM accounting 
+      WHERE type = 'expense'
+      AND MONTH(date) = MONTH(CURRENT_DATE())
+      AND YEAR(date) = YEAR(CURRENT_DATE())
+    `);
+    const monthly_expense = parseFloat(monthlyExpenseResult[0].total) || 0;
+
+    // Get last month's expenses
+    const [lastMonthExpenseResult] = await pool.query(`
+      SELECT COALESCE(SUM(amount), 0) as total 
+      FROM accounting 
+      WHERE type = 'expense'
+      AND MONTH(date) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+      AND YEAR(date) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+    `);
+    const last_month_expense = parseFloat(lastMonthExpenseResult[0].total) || 0;
+
+    // Get total transactions count
+    const [transactionsResult] = await pool.query(`
+      SELECT COUNT(*) as total 
+      FROM accounting
+    `);
+    const total_transactions = parseInt(transactionsResult[0].total) || 0;
+
+    // Calculate trends
+    let income_trend = 0;
+    if (last_month_income > 0) {
+      income_trend = ((monthly_income - last_month_income) / last_month_income) * 100;
+    } else if (monthly_income > 0) {
+      income_trend = 100; // If last month was 0 and this month has income, it's a 100% increase
+    }
+
+    let expense_trend = 0;
+    if (last_month_expense > 0) {
+      expense_trend = ((monthly_expense - last_month_expense) / last_month_expense) * 100;
+    } else if (monthly_expense > 0) {
+      expense_trend = 100; // If last month was 0 and this month has expenses, it's a 100% increase
+    }
+
+    let balance_trend = 0;
+    const current_balance = monthly_income - monthly_expense;
+    const last_month_balance = last_month_income - last_month_expense;
+    if (last_month_balance !== 0) {
+      balance_trend = ((current_balance - last_month_balance) / Math.abs(last_month_balance)) * 100;
+    } else if (current_balance !== 0) {
+      balance_trend = current_balance > 0 ? 100 : -100;
+    }
+
+    // Log the calculated values for debugging
+    console.log('Calculated stats:', {
+      total_income,
+      total_expense,
+      monthly_income,
+      monthly_expense,
+      total_transactions,
+      income_trend,
+      expense_trend,
+      balance_trend,
+      last_month_income,
+      last_month_expense,
+      current_balance,
+      last_month_balance
+    });
+
+    // Send response with all values
     res.json({
-      totalIncome,
-      totalExpenses,
-      balance,
-      recentTransactions
+      total_income,
+      total_expense,
+      monthly_income,
+      monthly_expense,
+      total_transactions,
+      income_trend: Math.round(income_trend),
+      expense_trend: Math.round(expense_trend),
+      balance_trend: Math.round(balance_trend)
     });
   } catch (error) {
     console.error('Error fetching accounting stats:', error);

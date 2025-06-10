@@ -5,7 +5,6 @@ import Layout from './components/Layout';
 import Login from './components/Login';
 import Register from './components/Register';
 import MemberTable from './components/MemberTable';
-import Accounting from './components/Accounting';
 import Reports from './components/Reports';
 import Notices from './components/Notices';
 import Complaints from './components/Complaints';
@@ -16,10 +15,9 @@ import { UserProvider, useUser } from './context/UserContext';
 import AdminDashboard from './components/AdminDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import UserDashboard from './components/UserDashboard';
-import TreasureDashboard from './components/TreasureDashboard';
 import SecurityDashboard from './components/SecurityDashboard';
 import SecretaryDashboard from './components/SecretaryDashboard';
-import AccountingDashboard from './components/AccountingDashboard';
+import UnifiedAccounting from './components/UnifiedAccounting';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -77,12 +75,12 @@ const AppRoutes = () => {
         {userRole === 'admin' && (
           <>
             <Route path="admin-dashboard" element={
-  <ErrorBoundary>
-    <AdminDashboard />
-  </ErrorBoundary>
-} />
+              <ErrorBoundary>
+                <AdminDashboard />
+              </ErrorBoundary>
+            } />
             <Route path="members" element={<MemberTable />} />
-            <Route path="accounting" element={<Accounting />} />
+            <Route path="accounting" element={<UnifiedAccounting />} />
             <Route path="reports" element={<Reports />} />
             <Route path="notices" element={<Notices />} />
             <Route path="complaints" element={<Complaints />} />
@@ -94,8 +92,8 @@ const AppRoutes = () => {
         {/* Treasure Routes */}
         {userRole === 'treasure' && (
           <>
-            <Route path="treasure-dashboard" element={<TreasureDashboard />} />
-            <Route path="accounting" element={<Accounting />} />
+            <Route path="treasure-dashboard" element={<UnifiedAccounting />} />
+            <Route path="accounting" element={<UnifiedAccounting />} />
             <Route path="reports" element={<Reports />} />
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<Settings />} />
@@ -139,16 +137,6 @@ const AppRoutes = () => {
           element={<Navigate to={getDefaultRoute(userRole)} replace />}
         />
       </Route>
-
-      {/* Accounting route */}
-      <Route 
-        path="/accounting" 
-        element={
-          <ProtectedRoute allowedRoles={['admin', 'treasure']}>
-            <AccountingDashboard />
-          </ProtectedRoute>
-        } 
-      />
 
       {/* Catch all route */}
       <Route
