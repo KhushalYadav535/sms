@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS reports (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  type VARCHAR(32) NOT NULL,
+  date_range TEXT NOT NULL,
+  generated_at DATETIME NOT NULL
+); 
