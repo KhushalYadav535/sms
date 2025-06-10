@@ -31,7 +31,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Report as ReportIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import axios from '../config/axios';
 
 const SecurityDashboard = () => {
   const theme = useTheme();
@@ -57,7 +57,7 @@ const SecurityDashboard = () => {
 
   const fetchIncidents = async () => {
     try {
-      const response = await axios.get('/api/security/incidents');
+      const response = await axios.get('/security/incidents');
       const incidentsData = Array.isArray(response.data) ? response.data : [];
       setIncidents(incidentsData);
       calculateStats(incidentsData);
@@ -126,9 +126,9 @@ const SecurityDashboard = () => {
     e.preventDefault();
     try {
       if (selectedIncident) {
-        await axios.put(`/api/security/incidents/${selectedIncident.id}`, formData);
+        await axios.put(`/security/incidents/${selectedIncident.id}`, formData);
       } else {
-        await axios.post('/api/security/incidents', formData);
+        await axios.post('/security/incidents', formData);
       }
       fetchIncidents();
       handleCloseDialog();
@@ -140,7 +140,7 @@ const SecurityDashboard = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this incident?')) {
       try {
-        await axios.delete(`/api/security/incidents/${id}`);
+        await axios.delete(`/security/incidents/${id}`);
         fetchIncidents();
       } catch (error) {
         console.error('Error deleting incident:', error);

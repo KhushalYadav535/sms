@@ -18,6 +18,7 @@ import UserDashboard from './components/UserDashboard';
 import SecurityDashboard from './components/SecurityDashboard';
 import SecretaryDashboard from './components/SecretaryDashboard';
 import UnifiedAccounting from './components/UnifiedAccounting';
+import InvoiceManagement from './components/InvoiceManagement';
 
 const AppRoutes = () => {
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -81,6 +82,7 @@ const AppRoutes = () => {
             } />
             <Route path="members" element={<MemberTable />} />
             <Route path="accounting" element={<UnifiedAccounting />} />
+            <Route path="admin/invoices/*" element={<InvoiceManagement />} />
             <Route path="reports" element={<Reports />} />
             <Route path="notices" element={<Notices />} />
             <Route path="complaints" element={<Complaints />} />

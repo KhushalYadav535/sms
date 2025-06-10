@@ -46,7 +46,7 @@ import {
 import { useUser } from '../context/UserContext';
 import axios from '../config/axios';
 
-const API_BASE_URL = '/api/accounting';
+const API_BASE_URL = '/accounting';
 
 const StatCard = ({ title, value, subvalue, subtitle, icon: Icon, color, onClick }) => (
   <Card 

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Grid, Card, CardContent, Typography, Stack, Avatar, Fade, Button, Tooltip, Dialog, DialogTitle, DialogContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TextField, InputAdornment, FormControl, InputLabel, Select, MenuItem, Chip, Alert, CircularProgress, DialogActions, IconButton, useTheme } from '@mui/material';
-import { People, AccountBalance, BugReport, Notifications, Payment, Announcement, TrendingUp, Add, Search, Edit, Delete } from '@mui/icons-material';
+import { People, AccountBalance, BugReport, Notifications, Payment, Announcement, TrendingUp, Add, Search, Edit, Delete, Receipt } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import axios from '../config/axios';
 import { useTheme as useMuiTheme } from '@mui/material/styles';
+import InvoiceGenerator from './InvoiceGenerator';
 
 const glass = {
   background: 'rgba(255,255,255,0.7)',
@@ -91,6 +92,7 @@ const AdminDashboard = () => {
   const theme = useMuiTheme();
   const [openStatDialog, setOpenStatDialog] = useState(false);
   const [statType, setStatType] = useState('');
+  const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
 
   useEffect(() => {
     if (!user || userRole !== 'admin') {
@@ -123,8 +125,8 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const [dashboardResponse, accountingResponse] = await Promise.all([
-        axios.get('/api/users/admin/dashboard'),
-        axios.get('/api/accounting/stats')
+        axios.get('/users/admin/dashboard'),
+        axios.get('/accounting/stats')
       ]);
 
       console.log('Accounting Response:', accountingResponse.data); // Debug log
@@ -151,7 +153,7 @@ const AdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('/api/users');
+      const response = await axios.get('/users');
       return response.data;
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -161,7 +163,7 @@ const AdminDashboard = () => {
 
   const fetchTransactions = async () => {
     try {
-      const response = await axios.get(API_BASE_URL);
+      const response = await axios.get('/accounting');
       setTransactions(response.data);
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -171,7 +173,7 @@ const AdminDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/stats`);
+      const response = await axios.get('/accounting/stats');
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -181,7 +183,7 @@ const AdminDashboard = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      const response = await axios.get('/api/announcements');
+      const response = await axios.get('/announcements');
       return response.data;
     } catch (error) {
       console.error('Error fetching announcements:', error);
@@ -536,13 +538,22 @@ const AdminDashboard = () => {
     <Box sx={{ p: 3 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1" fontWeight="bold">Admin Dashboard</Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => setShowAddUser(true)}
-        >
-          Add New User
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => setShowAddUser(true)}
+          >
+            Add New User
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<Receipt />}
+            onClick={() => setShowInvoiceGenerator(true)}
+          >
+            Generate Invoices
+          </Button>
+        </Box>
       </Stack>
 
       {error && (
@@ -1103,6 +1114,21 @@ const AdminDashboard = () => {
           <Button onClick={handleSubmit} variant="contained">
             {selectedAnnouncement ? 'Update' : 'Create'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={showInvoiceGenerator}
+        onClose={() => setShowInvoiceGenerator(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>Invoice Generator</DialogTitle>
+        <DialogContent>
+          <InvoiceGenerator />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowInvoiceGenerator(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -1,10 +1,10 @@
-const db = require('../config/database');
+const pool = require('../config/db');
 
 const announcementController = {
   // Get all announcements
   getAllAnnouncements: async (req, res) => {
     try {
-      const [announcements] = await db.query(`
+      const [announcements] = await pool.query(`
         SELECT * FROM announcements 
         ORDER BY created_at DESC
       `);
@@ -19,12 +19,12 @@ const announcementController = {
   createAnnouncement: async (req, res) => {
     const { title, content, type, priority, startDate, endDate } = req.body;
     try {
-      const [result] = await db.query(`
+      const [result] = await pool.query(`
         INSERT INTO announcements (title, content, type, priority, start_date, end_date, created_by)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `, [title, content, type, priority, startDate, endDate, req.user.id]);
 
-      const [newAnnouncement] = await db.query(
+      const [newAnnouncement] = await pool.query(
         'SELECT * FROM announcements WHERE id = ?',
         [result.insertId]
       );
@@ -41,13 +41,13 @@ const announcementController = {
     const { id } = req.params;
     const { title, content, type, priority, startDate, endDate } = req.body;
     try {
-      await db.query(`
+      await pool.query(`
         UPDATE announcements 
         SET title = ?, content = ?, type = ?, priority = ?, start_date = ?, end_date = ?
         WHERE id = ?
       `, [title, content, type, priority, startDate, endDate, id]);
 
-      const [updatedAnnouncement] = await db.query(
+      const [updatedAnnouncement] = await pool.query(
         'SELECT * FROM announcements WHERE id = ?',
         [id]
       );
@@ -67,7 +67,7 @@ const announcementController = {
   deleteAnnouncement: async (req, res) => {
     const { id } = req.params;
     try {
-      const [result] = await db.query(
+      const [result] = await pool.query(
         'DELETE FROM announcements WHERE id = ?',
         [id]
       );

@@ -35,6 +35,7 @@ import {
   Add as AddIcon,
   Search as SearchIcon,
   ExitToApp,
+  Receipt,
 } from '@mui/icons-material';
 import { useUser } from '../context/UserContext';
 import Announcements from './Announcements';
@@ -80,6 +81,7 @@ function Layout() {
           { path: '/admin-dashboard', label: 'Dashboard' },
           { path: '/members', label: 'Members' },
           { path: '/accounting', label: 'Accounting' },
+          { path: '/admin/invoices', label: 'Invoices', icon: <Receipt /> },
           { path: '/reports', label: 'Reports' },
           { path: '/notices', label: 'Notices' },
           { path: '/complaints', label: 'Complaints' },

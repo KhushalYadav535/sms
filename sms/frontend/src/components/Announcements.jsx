@@ -65,7 +65,7 @@ const Announcements = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      const response = await axios.get('/api/announcements');
+      const response = await axios.get('/announcements');
       const announcementsData = Array.isArray(response.data) ? response.data : [];
       setAnnouncements(announcementsData);
     } catch (error) {
@@ -108,9 +108,9 @@ const Announcements = () => {
     e.preventDefault();
     try {
       if (selectedAnnouncement) {
-        await axios.put(`/api/announcements/${selectedAnnouncement.id}`, formData);
+        await axios.put(`/announcements/${selectedAnnouncement.id}`, formData);
       } else {
-        await axios.post('/api/announcements', formData);
+        await axios.post('/announcements', formData);
       }
       fetchAnnouncements();
       handleCloseDialog();
@@ -122,7 +122,7 @@ const Announcements = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this announcement?')) {
       try {
-        await axios.delete(`/api/announcements/${id}`);
+        await axios.delete(`/announcements/${id}`);
         fetchAnnouncements();
       } catch (error) {
         console.error('Error deleting announcement:', error);

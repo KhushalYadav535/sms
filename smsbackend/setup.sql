@@ -65,6 +65,20 @@ CREATE TABLE IF NOT EXISTS complaints (
   FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Create security_incidents table
+CREATE TABLE IF NOT EXISTS security_incidents (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  type VARCHAR(50) NOT NULL,
+  description TEXT NOT NULL,
+  location VARCHAR(255) NOT NULL,
+  status ENUM('pending', 'resolved', 'urgent') NOT NULL DEFAULT 'pending',
+  date DATE NOT NULL,
+  reported_by INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (reported_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
 -- Create reports table
 CREATE TABLE IF NOT EXISTS reports (
   id INT AUTO_INCREMENT PRIMARY KEY,

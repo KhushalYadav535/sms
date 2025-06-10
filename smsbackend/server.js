@@ -17,6 +17,9 @@ const accountingRoutes = require('./routes/accountingRoutes');
 const reportsRoutes = require('./routes/reportRoutes');
 const securityRoutes = require('./routes/securityRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
+const invoiceRoutes = require('./routes/invoiceRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const standardChargesRoutes = require('./routes/standardChargesRoutes');
 
 const app = express();
 
@@ -49,15 +52,14 @@ db.query('SELECT 1')
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/notices', noticeRoutes);
-app.use('/api/transactions', transactionRoutes);
-app.use('/api/complaints', complaintRoutes);
-app.use('/api/settings', settingsRoutes);
 app.use('/api/members', memberRoutes);
-app.use('/api/accounting', accountingRoutes);
-app.use('/api/reports', reportsRoutes);
-app.use('/api/security', securityRoutes);
+app.use('/api/notices', noticeRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/standard-charges', standardChargesRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/accounting', accountingRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
