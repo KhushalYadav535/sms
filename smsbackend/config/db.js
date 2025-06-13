@@ -1,41 +1,40 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Log environment variables (without sensitive data)
+// Log environment check
 console.log('Environment Check:', {
   NODE_ENV: process.env.NODE_ENV,
-  DB_HOST: process.env.DB_HOST ? 'Set' : 'Not Set',
-  DB_PORT: process.env.DB_PORT ? 'Set' : 'Not Set',
-  DB_USER: process.env.DB_USER ? 'Set' : 'Not Set',
-  DB_NAME: process.env.DB_NAME ? 'Set' : 'Not Set',
-  DB_PASSWORD: process.env.DB_PASSWORD ? 'Set' : 'Not Set'
+  DB_HOST: process.env.MYSQLHOST ? 'Set' : 'Not Set',
+  DB_PORT: process.env.MYSQLPORT ? 'Set' : 'Not Set',
+  DB_USER: process.env.MYSQLUSER ? 'Set' : 'Not Set',
+  DB_NAME: process.env.MYSQLDATABASE ? 'Set' : 'Not Set',
+  DB_PASSWORD: process.env.MYSQLPASSWORD ? 'Set' : 'Not Set'
 });
 
 // Log database configuration (without sensitive data)
 console.log('Database Configuration:', {
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'root',
-  database: process.env.DB_NAME || 'society_management',
+  host: process.env.MYSQLHOST,
+  port: process.env.MYSQLPORT,
+  user: process.env.MYSQLUSER,
+  database: process.env.MYSQLDATABASE,
   ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
 });
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'root',
-  database: process.env.DB_NAME || 'society_management',
+  host: process.env.MYSQLHOST,
+  port: process.env.MYSQLPORT,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  charset: 'utf8mb4',
   ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false
   } : undefined
 });
 
-// Test the connection and verify table structure
+// Test the connection
 async function testConnection() {
   let connection;
   try {
@@ -89,7 +88,7 @@ async function testConnection() {
   }
 }
 
-// Run connection test
+// Run the connection test
 testConnection();
 
 // Handle pool errors
