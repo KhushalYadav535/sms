@@ -138,7 +138,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update transaction
-router.put('/:id', async (req, res) => {
+router.put('/:id', require('../middleware/ensureTreasure'), async (req, res) => {
   try {
     const { id } = req.params;
     const { type, amount, description, date, member_id } = req.body;
@@ -171,7 +171,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete transaction
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', require('../middleware/ensureAdmin'), async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM accounting WHERE id = ?', [id]);

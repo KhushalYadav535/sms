@@ -60,7 +60,12 @@ const Reports = () => {
           'Authorization': `Bearer ${getToken()}`,
         },
       });
-      if (!response.ok) throw new Error('Failed to download report');
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Report not found. Please generate the report first.');
+        }
+        throw new Error('Failed to download report');
+      }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -71,7 +76,7 @@ const Reports = () => {
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      setDownloadError('Failed to download report. Please try again.');
+      setDownloadError(err.message || 'Failed to download report. Please try again.');
     }
   };
 

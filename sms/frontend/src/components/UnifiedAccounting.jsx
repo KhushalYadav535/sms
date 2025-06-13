@@ -129,13 +129,13 @@ const UnifiedAccounting = () => {
   const [editingTransaction, setEditingTransaction] = useState(null);
 
   // Check if user has permission to modify transactions
-  const canModifyTransactions = userRole === 'admin' || userRole === 'treasurer';
+  const canModifyTransactions = userRole === 'admin' || userRole === 'treasurer' || userRole === 'treasure';
   // Only admin can delete transactions
   const canDeleteTransactions = userRole === 'admin';
 
   // Fetch selected member profile when dialog opens or member_id changes
   useEffect(() => {
-    if (showAddDialog && (userRole === 'admin' || userRole === 'treasurer')) {
+    if (showAddDialog && (userRole === 'admin' || userRole === 'treasurer' || userRole === 'treasure')) {
       let memberId = formData.member_id;
       if (!memberId && members.length > 0) {
         memberId = members[0].id;
@@ -158,8 +158,8 @@ const UnifiedAccounting = () => {
   useEffect(() => {
     fetchStats();
     fetchTransactions();
-    // Fetch members if admin/treasurer
-    if (userRole === 'admin' || userRole === 'treasurer') {
+    // Fetch members if admin/treasurer/treasure
+    if (userRole === 'admin' || userRole === 'treasurer' || userRole === 'treasure') {
       import('../api').then(api => {
         api.fetchMembers()
           .then(data => setMembers(data))

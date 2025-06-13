@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 
 const UserContext = createContext();
 
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
+  const navigate = useNavigate();
   // Always initialize from localStorage
   const [user, setUser] = useState(() => {
     const u = localStorage.getItem('user');
@@ -40,8 +42,18 @@ export const UserProvider = ({ children }) => {
   // Utility: when logging out, call setUser(null) and setUserRole(null)
   const userId = user?.id || null;
 
+  // Logout and redirect
+  const logout = () => {
+    setUser(null);
+    setUserRole(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('userRole');
+    navigate('/login', { replace: true });
+  };
+
   return (
-    <UserContext.Provider value={{ user, setUser, userRole, setUserRole, userId }}>
+    <UserContext.Provider value={{ user, setUser, userRole, setUserRole, userId, logout }}>
       {children}
     </UserContext.Provider>
   );

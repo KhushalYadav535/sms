@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon,
+  Logout as LogoutIcon,
   Home,
   Dashboard,
   AccountBalance,
@@ -27,7 +28,7 @@ import {
 import { useUser } from '../context/UserContext';
 
 const Navigation = () => {
-  const { user, userRole } = useUser();
+  const { user, userRole, logout } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -79,6 +80,10 @@ const Navigation = () => {
             <ListItemText primary={item.text} />
           </ListItem>
         ))}
+        <ListItem button key="Logout" onClick={logout}>
+          <ListItemIcon><LogoutIcon /></ListItemIcon>
+          <ListItemText primary="Logout" />
+        </ListItem>
       </List>
     </Box>
   );

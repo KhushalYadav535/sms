@@ -7,6 +7,16 @@ function toMySQLDateTime(date) {
   return d.toISOString().slice(0, 19).replace('T', ' ');
 }
 
+function safeParse(val) {
+  if (!val) return {};
+  if (typeof val === 'object') return val;
+  try {
+    return JSON.parse(val);
+  } catch (e) {
+    return {};
+  }
+}
+
 class Report {
   static async create(data) {
     try {
@@ -43,7 +53,7 @@ class Report {
     const [reports] = await db.query(query);
     return reports.map(report => ({
       ...report,
-      dateRange: JSON.parse(report.date_range)
+      dateRange: safeParse(report.date_range)
     }));
   }
 
@@ -54,7 +64,7 @@ class Report {
     const report = reports[0];
     return {
       ...report,
-      dateRange: JSON.parse(report.date_range)
+      dateRange: safeParse(report.date_range)
     };
   }
 
