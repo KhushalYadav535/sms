@@ -1,5 +1,6 @@
 const Member = require('../models/memberModel');
 const pool = require('../config/db');
+const bcrypt = require('bcryptjs');
 
 exports.getCurrentMember = async (req, res) => {
   try {
@@ -53,8 +54,6 @@ exports.getById = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
-
-const bcrypt = require('bcrypt');
 
 exports.create = async (req, res) => {
   try {

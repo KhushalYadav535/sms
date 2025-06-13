@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 const User = require('./userModel');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const Member = {
   async getAll() {
