@@ -1,10 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const noticeController = require('../controllers/noticeController');
-const auth = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/auth');
+const { validate, noticeValidation } = require('../middleware/validator');
 
-router.get('/', auth, noticeController.getAll);
-router.post('/', auth, noticeController.create);
-router.delete('/:id', auth, noticeController.remove);
+// All routes require authentication
+router.use(protect);
+
+// Get all notices
+router.get('/', noticeController.getAll);
+
+// Create notice (admin only)
+router.post('/', authorize('admin'), validate(noticeValidation), noticeController.create);
+
+// Delete notice (admin only)
+router.delete('/:id', authorize('admin'), noticeController.remove);
 
 module.exports = router;

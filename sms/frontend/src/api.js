@@ -74,6 +74,7 @@ export const register = async (userData) => {
 
 // Members
 export const fetchMembers = () => authFetch(`${API_URL}/members`);
+export const fetchMemberById = (id) => authFetch(`${API_URL}/members/${id}`);
 export const addMember = (data) => authFetch(`${API_URL}/members`, { method: 'POST', body: JSON.stringify(data) });
 export const updateMember = (id, data) => authFetch(`${API_URL}/members/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteMember = (id) => authFetch(`${API_URL}/members/${id}`, { method: 'DELETE' });

@@ -24,6 +24,16 @@ const Member = {
     let userId;
 
     if (existingUser) {
+      // Check if member profile already exists for this user
+      const [existingMember] = await pool.query(
+        'SELECT * FROM members WHERE user_id = ?',
+        [existingUser.id]
+      );
+
+      if (existingMember && existingMember.length > 0) {
+        throw new Error('Member profile already exists for this user');
+      }
+
       // Use existing user
       userId = existingUser.id;
     } else {

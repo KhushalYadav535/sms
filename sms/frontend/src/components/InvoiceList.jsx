@@ -207,7 +207,7 @@ const InvoiceList = () => {
           </TableHead>
           <TableBody>
             {filteredInvoices.map((invoice) => (
-              <TableRow key={invoice.id}>
+              <TableRow key={invoice.invoice_id}>
                 <TableCell>{invoice.invoice_number}</TableCell>
                 <TableCell>{invoice.member_name}</TableCell>
                 <TableCell>{invoice.flat_number}</TableCell>
@@ -233,7 +233,7 @@ const InvoiceList = () => {
                     <VisibilityIcon />
                   </IconButton>
                   <IconButton
-                    onClick={() => handleDownloadInvoice(invoice.id)}
+                    onClick={() => handleDownloadInvoice(invoice.invoice_id)}
                     size="small"
                   >
                     <DownloadIcon />
@@ -346,7 +346,7 @@ const InvoiceList = () => {
         <DialogActions>
           <Button onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
           <Button
-            onClick={() => handleSendEmail(selectedInvoice?.id)}
+            onClick={() => handleSendEmail(selectedInvoice?.invoice_id)}
             variant="contained"
           >
             Send

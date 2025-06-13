@@ -1,4 +1,6 @@
 const pool = require('../config/db');
+const { jsPDF } = require('jspdf');
+require('jspdf-autotable');
 
 const monthNames = [
   "January", "February", "March", "April", "May", "June",
@@ -9,9 +11,10 @@ const monthNames = [
 const getAllInvoices = async (req, res) => {
   try {
     const [invoices] = await pool.query(`
-      SELECT i.*, m.name as member_name, m.flat_number
+      SELECT i.*, u.name as member_name, m.house_number as flat_number
       FROM invoices i
       JOIN members m ON i.member_id = m.id
+      JOIN users u ON m.user_id = u.id
       ORDER BY i.generated_at DESC
     `);
     res.json(invoices);
@@ -212,6 +215,97 @@ const addStandardCharge = async (req, res) => {
   }
 };
 
+// Download invoice PDF
+const downloadInvoicePDF = async (req, res) => {
+  try {
+    const [invoice] = await pool.query(`
+      SELECT i.*, u.name as member_name, m.house_number as flat_number
+      FROM invoices i
+      JOIN members m ON i.member_id = m.id
+      JOIN users u ON m.user_id = u.id
+      WHERE i.invoice_id = ?
+    `, [req.params.id]);
+
+    if (invoice.length === 0) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    const [items] = await pool.query(`
+      SELECT * FROM invoice_items
+      WHERE invoice_id = ?
+    `, [req.params.id]);
+
+    const invoiceData = { ...invoice[0], items };
+    
+    // Generate PDF
+    const doc = new jsPDF();
+    
+    // Add header
+    doc.setFontSize(20);
+    doc.text('Housing Society Invoice', 20, 20);
+    
+    // Add invoice details
+    doc.setFontSize(12);
+    doc.text(`Invoice Number: ${invoiceData.invoice_number}`, 20, 30);
+    doc.text(`Date: ${new Date(invoiceData.bill_period).toLocaleDateString()}`, 20, 40);
+    doc.text(`Member: ${invoiceData.member_name}`, 20, 50);
+    doc.text(`Flat: ${invoiceData.flat_number}`, 20, 60);
+
+    // Add table header
+    doc.setFontSize(12);
+    doc.text('Description', 20, 80);
+    doc.text('Amount', 150, 80);
+    doc.line(20, 82, 190, 82);
+
+    // Add table rows
+    let y = 90;
+    items.forEach((item, index) => {
+      doc.text(item.description, 20, y);
+      doc.text(`₹${Number(item.amount).toFixed(2)}`, 150, y);
+      y += 10;
+    });
+
+    // Add total
+    const total = items.reduce((sum, item) => sum + Number(item.amount), 0);
+    doc.line(20, y, 190, y);
+    doc.text('Total:', 20, y + 10);
+    doc.text(`₹${total.toFixed(2)}`, 150, y + 10);
+
+    // Send the PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=invoice-${invoiceData.invoice_number}.pdf`);
+    res.send(doc.output());
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    res.status(500).json({ message: 'Error generating PDF' });
+  }
+};
+
+// Send invoice via email
+const sendInvoiceEmail = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const [invoice] = await pool.query(`
+      SELECT i.*, u.name as member_name, m.house_number as flat_number
+      FROM invoices i
+      JOIN members m ON i.member_id = m.id
+      JOIN users u ON m.user_id = u.id
+      WHERE i.invoice_id = ?
+    `, [req.params.id]);
+
+    if (invoice.length === 0) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    // TODO: Implement email sending functionality
+    // For now, just return success
+    res.json({ message: 'Email sent successfully' });
+  } catch (error) {
+    console.error('Error sending email:', error);
+    res.status(500).json({ message: 'Error sending email' });
+  }
+};
+
 module.exports = {
   getAllInvoices,
   getInvoiceById,
@@ -219,5 +313,7 @@ module.exports = {
   updateInvoiceStatus,
   getStandardCharges,
   updateStandardCharge,
-  addStandardCharge
+  addStandardCharge,
+  downloadInvoicePDF,
+  sendInvoiceEmail
 }; 

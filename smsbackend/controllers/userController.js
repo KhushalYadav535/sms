@@ -1,22 +1,22 @@
 const User = require('../models/userModel');
-const pool = require('../config/db');
+const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 
 // Get user profile
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
+    const [users] = await db.query(
+      'SELECT id, name, email, role FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    if (users.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    });
+
+    res.json(users[0]);
   } catch (error) {
-    console.error('Error getting profile:', error);
+    console.error('Get profile error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -25,25 +25,34 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { name, email } = req.body;
-    const user = await User.findById(req.user.id);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    const userId = req.user.id;
+
+    // Check if email is already taken by another user
+    if (email) {
+      const [existingUsers] = await db.query(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
+        [email, userId]
+      );
+
+      if (existingUsers.length > 0) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
     }
 
     // Update user
-    user.name = name || user.name;
-    user.email = email || user.email;
-    await user.save();
+    await db.query(
+      'UPDATE users SET name = ?, email = ? WHERE id = ?',
+      [name, email, userId]
+    );
 
-    res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    });
+    const [updatedUser] = await db.query(
+      'SELECT id, name, email, role FROM users WHERE id = ?',
+      [userId]
+    );
+
+    res.json(updatedUser[0]);
   } catch (error) {
-    console.error('Error updating profile:', error);
+    console.error('Update profile error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -55,15 +64,13 @@ exports.getAllUsers = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const users = await User.findAll();
-    res.json(users.map(user => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    })));
+    const [users] = await db.query(
+      'SELECT id, name, email, role, created_at FROM users'
+    );
+
+    res.json(users);
   } catch (error) {
-    console.error('Error getting users:', error);
+    console.error('Get all users error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -88,31 +95,33 @@ exports.createUser = async (req, res) => {
     }
 
     // Check if user exists
-    const existing = await User.findByEmail(email);
-    if (existing) {
-      return res.status(400).json({ message: 'Email already exists' });
+    const [existingUsers] = await db.query(
+      'SELECT id FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ message: 'Email already registered' });
     }
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create user
-    const newUser = await User.create({
-      name,
-      email,
-      password: hash,
-      role
-    });
+    const [result] = await db.query(
+      'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+      [name, email, hashedPassword, role]
+    );
 
-    res.status(201).json({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role
-    });
+    const [newUser] = await db.query(
+      'SELECT id, name, email, role FROM users WHERE id = ?',
+      [result.insertId]
+    );
+
+    res.status(201).json(newUser[0]);
   } catch (error) {
-    console.error('Error creating user:', error);
+    console.error('Create user error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -137,22 +146,30 @@ exports.updateUserRole = async (req, res) => {
       return res.status(400).json({ message: 'Invalid role' });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
+    // Check if user exists
+    const [users] = await db.query(
+      'SELECT id FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.role = role;
-    await user.save();
+    // Update role
+    await db.query(
+      'UPDATE users SET role = ? WHERE id = ?',
+      [role, userId]
+    );
 
-    res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    });
+    const [updatedUser] = await db.query(
+      'SELECT id, name, email, role FROM users WHERE id = ?',
+      [userId]
+    );
+
+    res.json(updatedUser[0]);
   } catch (error) {
-    console.error('Error updating user role:', error);
+    console.error('Update user role error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -165,16 +182,23 @@ exports.deleteUser = async (req, res) => {
     }
 
     const { userId } = req.params;
-    const user = await User.findById(userId);
-    
-    if (!user) {
+
+    // Check if user exists
+    const [users] = await db.query(
+      'SELECT id FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    await User.delete(userId);
+    // Delete user
+    await db.query('DELETE FROM users WHERE id = ?', [userId]);
+
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
-    console.error('Error deleting user:', error);
+    console.error('Delete user error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -182,48 +206,32 @@ exports.deleteUser = async (req, res) => {
 // Get dashboard stats based on role
 exports.getUserDashboardStats = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    const userId = req.user.id;
 
-    let stats = {};
-    switch (user.role) {
-      case 'treasure':
-        // Get financial stats
-        stats = {
-          totalIncome: 0, // Implement actual calculation
-          totalExpenses: 0, // Implement actual calculation
-          balance: 0, // Implement actual calculation
-          recentTransactions: [] // Implement actual data
-        };
-        break;
-      case 'security':
-        // Get security stats
-        stats = {
-          activeVisitors: 0, // Implement actual count
-          securityAlerts: [], // Implement actual data
-          recentIncidents: [] // Implement actual data
-        };
-        break;
-      case 'secretary':
-        // Get secretary stats
-        stats = {
-          upcomingMeetings: [], // Implement actual data
-          pendingTasks: [], // Implement actual data
-          recentDocuments: [] // Implement actual data
-        };
-        break;
-      default:
-        stats = {
-          notices: [], // Implement actual data
-          complaints: [] // Implement actual data
-        };
-    }
+    // Get user's complaints
+    const [complaints] = await db.query(
+      'SELECT COUNT(*) as total FROM complaints WHERE member_id = ?',
+      [userId]
+    );
 
-    res.json(stats);
+    // Get user's payments
+    const [payments] = await db.query(
+      'SELECT COUNT(*) as total FROM accounting WHERE member_id = ? AND type = "income"',
+      [userId]
+    );
+
+    // Get user's notices
+    const [notices] = await db.query(
+      'SELECT COUNT(*) as total FROM announcements WHERE type = "notice"'
+    );
+
+    res.json({
+      totalComplaints: complaints[0].total,
+      totalPayments: payments[0].total,
+      totalNotices: notices[0].total
+    });
   } catch (error) {
-    console.error('Error getting dashboard stats:', error);
+    console.error('Get user dashboard stats error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -231,17 +239,38 @@ exports.getUserDashboardStats = async (req, res) => {
 // Change current user's password
 exports.changePassword = async (req, res) => {
   try {
+    const { currentPassword, newPassword } = req.body;
     const userId = req.user.id;
-    const { oldPassword, newPassword } = req.body;
-    const [rows] = await pool.query('SELECT password FROM users WHERE id = ?', [userId]);
-    if (!rows.length) return res.status(404).json({ message: 'User not found' });
-    const isMatch = await bcrypt.compare(oldPassword, rows[0].password);
-    if (!isMatch) return res.status(400).json({ message: 'Old password is incorrect' });
-    const hash = await bcrypt.hash(newPassword, 10);
-    await pool.query('UPDATE users SET password = ? WHERE id = ?', [hash, userId]);
-    res.json({ message: 'Password changed successfully' });
+
+    // Get current user
+    const [users] = await db.query(
+      'SELECT password FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, users[0].password);
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password
+    await db.query(
+      'UPDATE users SET password = ? WHERE id = ?',
+      [hashedPassword, userId]
+    );
+
+    res.json({ message: 'Password updated successfully' });
   } catch (error) {
-    console.error('Error in changePassword:', error);
+    console.error('Change password error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -249,49 +278,36 @@ exports.changePassword = async (req, res) => {
 // Get admin dashboard stats
 exports.getAdminDashboardStats = async (req, res) => {
   try {
-    // Get total users count
-    const [usersResult] = await pool.query('SELECT COUNT(*) as total FROM users');
-    const totalUsers = usersResult[0].total;
+    // Get total members
+    const [members] = await db.query('SELECT COUNT(*) as total FROM members');
 
-    // Get total members count (users with role 'user')
-    const [membersResult] = await pool.query('SELECT COUNT(*) as total FROM users WHERE role = "user"');
-    const totalMembers = membersResult[0].total;
-
-    // Get total complaints count
-    const [complaintsResult] = await pool.query('SELECT COUNT(*) as total FROM complaints');
-    const totalComplaints = complaintsResult[0].total;
+    // Get total complaints
+    const [complaints] = await db.query('SELECT COUNT(*) as total FROM complaints');
 
     // Get total income
-    const [incomeResult] = await pool.query('SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = "income"');
-    const totalIncome = incomeResult[0].total;
+    const [income] = await db.query(
+      'SELECT SUM(amount) as total FROM accounting WHERE type = "income"'
+    );
 
     // Get total expenses
-    const [expensesResult] = await pool.query('SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = "expense"');
-    const totalExpenses = expensesResult[0].total;
-
-    // Get recent users
-    const [recentUsers] = await pool.query(
-      'SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC LIMIT 5'
+    const [expenses] = await db.query(
+      'SELECT SUM(amount) as total FROM accounting WHERE type = "expense"'
     );
 
     // Get recent complaints
-    const [recentComplaints] = await pool.query(
-      'SELECT c.*, u.name as user_name FROM complaints c LEFT JOIN users u ON c.user_id = u.id ORDER BY c.created_at DESC LIMIT 5'
+    const [recentComplaints] = await db.query(
+      'SELECT * FROM complaints ORDER BY created_at DESC LIMIT 5'
     );
 
     res.json({
-      stats: {
-        totalUsers,
-        totalMembers,
-        totalComplaints,
-        totalIncome,
-        totalExpenses
-      },
-      recentUsers,
+      totalMembers: members[0].total,
+      totalComplaints: complaints[0].total,
+      totalIncome: income[0].total || 0,
+      totalExpenses: expenses[0].total || 0,
       recentComplaints
     });
   } catch (error) {
-    console.error('Error getting admin dashboard stats:', error);
+    console.error('Get admin dashboard stats error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

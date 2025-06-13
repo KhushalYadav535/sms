@@ -182,6 +182,19 @@ const MemberTable = () => {
       });
     } catch (error) {
       console.error('Error adding member:', error);
+      if (error.message.includes('Member profile already exists')) {
+        setFormErrors({
+          email: 'A member profile already exists for this email. Please use a different email address.'
+        });
+      } else if (error.message.includes('Email already exists')) {
+        setFormErrors({
+          email: 'This email is already registered. Please use a different email address.'
+        });
+      } else {
+        setFormErrors({
+          general: error.message || 'Error adding member. Please try again.'
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }

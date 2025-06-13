@@ -111,25 +111,62 @@ const UnifiedAccounting = () => {
     balance_trend: 0
   });
 
+  const [members, setMembers] = useState([]);
+
+  // State for selected member profile
+  const [selectedMemberProfile, setSelectedMemberProfile] = useState(null);
+
   const [formData, setFormData] = useState({
     type: 'income',
     amount: '',
     description: '',
     category: '',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    member_id: ''
   });
 
+  // Restore editingTransaction state
   const [editingTransaction, setEditingTransaction] = useState(null);
 
   // Check if user has permission to modify transactions
-  const canModifyTransactions = userRole === 'admin' || userRole === 'treasure';
+  const canModifyTransactions = userRole === 'admin' || userRole === 'treasurer';
   // Only admin can delete transactions
   const canDeleteTransactions = userRole === 'admin';
+
+  // Fetch selected member profile when dialog opens or member_id changes
+  useEffect(() => {
+    if (showAddDialog && (userRole === 'admin' || userRole === 'treasurer')) {
+      let memberId = formData.member_id;
+      if (!memberId && members.length > 0) {
+        memberId = members[0].id;
+        setFormData(f => ({ ...f, member_id: memberId }));
+      }
+      if (memberId) {
+        fetch(`/api/members/${memberId}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        })
+          .then(res => res.json())
+          .then(data => setSelectedMemberProfile(data))
+          .catch(() => setSelectedMemberProfile(null));
+      }
+    } else {
+      setSelectedMemberProfile(null);
+    }
+    // eslint-disable-next-line
+  }, [showAddDialog, formData.member_id, userRole, members]);
 
   useEffect(() => {
     fetchStats();
     fetchTransactions();
-  }, []);
+    // Fetch members if admin/treasurer
+    if (userRole === 'admin' || userRole === 'treasurer') {
+      import('../api').then(api => {
+        api.fetchMembers()
+          .then(data => setMembers(data))
+          .catch(() => setMembers([]));
+      });
+    }
+  }, [userRole]);
 
   const fetchStats = async () => {
     try {
@@ -175,7 +212,12 @@ const UnifiedAccounting = () => {
 
     try {
       setError('');
-      await axios.post(API_BASE_URL, formData);
+      // Only send member_id if admin/treasurer
+      const payload = { ...formData };
+      if (!(userRole === 'admin' || userRole === 'treasure')) {
+        delete payload.member_id;
+      }
+      await axios.post(API_BASE_URL, payload);
       setSuccess('Transaction added successfully');
       setShowAddDialog(false);
       setFormData({
@@ -403,6 +445,46 @@ const UnifiedAccounting = () => {
                 <MenuItem value="expense">Expense</MenuItem>
               </Select>
             </FormControl>
+            {(userRole === 'admin' || userRole === 'treasurer') && (
+              <>
+                <FormControl fullWidth>
+                  <InputLabel>Member</InputLabel>
+                  <Select
+                    value={formData.member_id || ''}
+                    label="Member"
+                    onChange={async (e) => {
+                      setFormData({ ...formData, member_id: e.target.value });
+                      try {
+                        const data = await fetchMemberById(e.target.value);
+                        setSelectedMemberProfile(data);
+                      } catch (err) {
+                        setSelectedMemberProfile(null);
+                      }
+                    }}
+                  >
+                    {members.map((m) => (
+                      <MenuItem key={m.id} value={m.id}>
+                        {m.name} ({m.house_number})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                {/* Member profile details */}
+                {selectedMemberProfile ? (
+                  <Box sx={{ mt: 2, mb: 1, p: 2, border: '1px solid #eee', borderRadius: 2, background: '#fafafa' }}>
+                    <Typography variant="subtitle1" fontWeight="bold">Member Details</Typography>
+                    <Typography variant="body2">Name: {selectedMemberProfile.name}</Typography>
+                    <Typography variant="body2">Email: {selectedMemberProfile.email}</Typography>
+                    <Typography variant="body2">House No: {selectedMemberProfile.house_number}</Typography>
+                    <Typography variant="body2">Phone: {selectedMemberProfile.phone_number}</Typography>
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
+                    No details found for this member.
+                  </Typography>
+                )}
+              </>
+            )}
             <TextField
               label="Amount"
               type="number"

@@ -1,44 +1,52 @@
-const User = require('../models/userModel');
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const db = require('../config/db');
+
+const generateToken = (user) => {
+  return jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+};
 
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
 
-    console.log('Attempting login for:', email);
-    const user = await User.findByEmail(email);
-    
-    if (!user) {
-      console.log('User not found:', email);
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      console.log('Invalid password for user:', email);
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, role: user.role }, 
-      process.env.JWT_SECRET || 'your-secret-key', 
-      { expiresIn: '1d' }
+    // Get user from database
+    const [users] = await db.query(
+      'SELECT * FROM users WHERE email = ?',
+      [email]
     );
 
-    console.log('Login successful for:', email);
-    res.json({ 
-      user: { 
-        id: user.id, 
-        name: user.name, 
-        email: user.email, 
-        role: user.role 
-      }, 
-      token 
+    if (users.length === 0) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const user = users[0];
+
+    // Check password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Update last login
+    await db.query(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
+      [user.id]
+    );
+
+    // Generate token
+    const token = generateToken(user);
+
+    // Remove password from response
+    delete user.password;
+
+    res.json({
+      user,
+      token
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -48,71 +56,133 @@ exports.login = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email and password are required' });
-    }
+    const { name, email, password, role = 'user' } = req.body;
 
-    console.log('Attempting registration for:', email);
-    console.log('Request body:', { name, email, password: '***' });
+    // Check if user already exists
+    const [existingUsers] = await db.query(
+      'SELECT id FROM users WHERE email = ?',
+      [email]
+    );
 
-    // Check if user exists
-    const existing = await User.findByEmail(email);
-    if (existing) {
-      console.log('Email already exists:', email);
-      return res.status(400).json({ message: 'Email already exists' });
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ message: 'Email already registered' });
     }
 
     // Hash password
-    console.log('Hashing password...');
     const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(password, salt);
-    console.log('Password hashed successfully');
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user
-    console.log('Creating new user...');
-    const newUser = await User.create({ 
-      name, 
-      email, 
-      password: hash, 
-      role: 'user'
-    });
-    console.log('User created successfully:', { id: newUser.id, email: newUser.email, role: newUser.role });
+    // Insert new user
+    const [result] = await db.query(
+      'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+      [name, email, hashedPassword, role]
+    );
+
+    const [newUser] = await db.query(
+      'SELECT id, name, email, role FROM users WHERE id = ?',
+      [result.insertId]
+    );
 
     // Generate token
-    console.log('Generating token...');
-    const token = jwt.sign(
-      { id: newUser.id, role: newUser.role }, 
-      process.env.JWT_SECRET || 'your-secret-key', 
-      { expiresIn: '1d' }
-    );
-    console.log('Token generated successfully');
+    const token = generateToken(newUser[0]);
 
-    // Send response
-    console.log('Sending response...');
-    res.status(201).json({ 
-      user: { 
-        id: newUser.id, 
-        name: newUser.name, 
-        email: newUser.email, 
-        role: newUser.role 
-      }, 
-      token 
+    res.status(201).json({
+      user: newUser[0],
+      token
     });
-    console.log('Registration completed successfully for:', email);
   } catch (error) {
-    console.error('Registration error details:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
-      errno: error.errno,
-      sqlMessage: error.sqlMessage,
-      sqlState: error.sqlState
-    });
-    res.status(500).json({ 
-      message: 'Internal server error',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+exports.getProfile = async (req, res) => {
+  try {
+    const [users] = await db.query(
+      'SELECT id, name, email, role FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(users[0]);
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const userId = req.user.id;
+
+    // Check if email is already taken by another user
+    if (email) {
+      const [existingUsers] = await db.query(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
+        [email, userId]
+      );
+
+      if (existingUsers.length > 0) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
+    }
+
+    // Update user
+    await db.query(
+      'UPDATE users SET name = ?, email = ? WHERE id = ?',
+      [name, email, userId]
+    );
+
+    const [updatedUser] = await db.query(
+      'SELECT id, name, email, role FROM users WHERE id = ?',
+      [userId]
+    );
+
+    res.json(updatedUser[0]);
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    // Get current user
+    const [users] = await db.query(
+      'SELECT password FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, users[0].password);
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password
+    await db.query(
+      'UPDATE users SET password = ? WHERE id = ?',
+      [hashedPassword, userId]
+    );
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };

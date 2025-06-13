@@ -195,7 +195,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       setError('');
-      const response = await axios.post('/api/users', newUser);
+      const response = await axios.post('/users', newUser);
       if (response.data) {
         setSuccess('User created successfully');
         setShowAddUser(false);
@@ -266,27 +266,27 @@ const AdminDashboard = () => {
 
       switch (type) {
         case 'users':
-          const usersResponse = await axios.get('/api/users');
+          const usersResponse = await axios.get('/users');
           data = usersResponse.data;
           title = 'User Details';
           break;
         case 'members':
-          const membersResponse = await axios.get('/api/members');
+          const membersResponse = await axios.get('/members');
           data = membersResponse.data;
           title = 'Member Details';
           break;
         case 'complaints':
-          const complaintsResponse = await axios.get('/api/complaints');
+          const complaintsResponse = await axios.get('/complaints');
           data = complaintsResponse.data;
           title = 'Complaint Details';
           break;
         case 'income':
-          const incomeResponse = await axios.get('/api/accounting/income');
+          const incomeResponse = await axios.get('/accounting/income');
           data = incomeResponse.data;
           title = 'Income Details';
           break;
         case 'expenses':
-          const expensesResponse = await axios.get('/api/accounting/expenses');
+          const expensesResponse = await axios.get('/accounting/expenses');
           data = expensesResponse.data;
           title = 'Expense Details';
           break;

@@ -1,87 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/database');
-const authMiddleware = require('../middleware/authMiddleware');
-const ensureAdmin = require('../middleware/ensureAdmin');
+const complaintController = require('../controllers/complaintController');
+const { protect, authorize } = require('../middleware/auth');
+const { validate, complaintValidation } = require('../middleware/validator');
 
-// Protected routes
-router.use(authMiddleware);
+// All routes require authentication
+router.use(protect);
 
 // Get all complaints
-router.get('/', (req, res) => {
-  pool.query(
-    `SELECT c.*, u.name as user_name
-     FROM complaints c
-     LEFT JOIN users u ON c.user_id = u.id
-     ORDER BY c.created_at DESC`
-  )
-  .then(([rows]) => {
-    res.json(rows);
-  })
-  .catch(error => {
-    console.error('Error fetching complaints:', error);
-    res.status(500).json({ message: 'Error fetching complaints' });
-  });
-});
+router.get('/', complaintController.getAll);
 
-// Create new complaint
-router.post('/', (req, res) => {
-  const { title, description, priority } = req.body;
-  const user_id = req.user.id;
-
-  pool.query(
-    'INSERT INTO complaints (user_id, title, description, priority, status) VALUES (?, ?, ?, ?, ?)',
-    [user_id, title, description, priority, 'Pending']
-  )
-  .then(([result]) => {
-    res.status(201).json({
-      id: result.insertId,
-      user_id,
-      title,
-      description,
-      priority,
-      status: 'Pending'
-    });
-  })
-  .catch(error => {
-    console.error('Error creating complaint:', error);
-    res.status(500).json({ message: 'Error creating complaint' });
-  });
-});
+// Create complaint
+router.post('/', validate(complaintValidation), complaintController.create);
 
 // Admin only routes
-router.use(ensureAdmin);
+router.use(authorize('admin'));
 
 // Update complaint status
-router.put('/:id', (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-
-  pool.query(
-    'UPDATE complaints SET status = ? WHERE id = ?',
-    [status, id]
-  )
-  .then(() => {
-    res.json({ message: 'Complaint updated successfully' });
-  })
-  .catch(error => {
-    console.error('Error updating complaint:', error);
-    res.status(500).json({ message: 'Error updating complaint' });
-  });
-});
+router.put('/:id/status', complaintController.updateStatus);
 
 // Delete complaint
-router.delete('/:id', (req, res) => {
-  const { id } = req.params;
-
-  pool.query('DELETE FROM complaints WHERE id = ?', [id])
-  .then(() => {
-    res.json({ message: 'Complaint deleted successfully' });
-  })
-  .catch(error => {
-    console.error('Error deleting complaint:', error);
-    res.status(500).json({ message: 'Error deleting complaint' });
-  });
-});
+router.delete('/:id', complaintController.remove);
 
 module.exports = router;

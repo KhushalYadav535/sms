@@ -4,6 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const db = require('./config/db');
+const errorHandler = require('./middleware/error');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -49,7 +50,7 @@ db.query('SELECT 1')
     process.exit(1);
   });
 
-// Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/members', memberRoutes);
@@ -60,15 +61,22 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/standard-charges', standardChargesRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/accounting', accountingRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/security', securityRoutes);
+app.use('/api/settings', settingsRoutes);
+
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+  // Handle SPA routing
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+  });
+}
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
-    message: err.message || 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err : {}
-  });
-});
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

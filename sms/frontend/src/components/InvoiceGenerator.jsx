@@ -84,6 +84,7 @@ const InvoiceGenerator = () => {
   const fetchStandardCharges = async () => {
     try {
       const response = await axios.get('/invoices/charges/standard');
+      console.log('Standard Charges:', response.data);
       setStandardCharges(response.data);
     } catch (error) {
       console.error('Error fetching standard charges:', error);
@@ -117,25 +118,110 @@ const InvoiceGenerator = () => {
 
   const generatePDF = (invoice) => {
     const doc = new jsPDF();
-    doc.text('Housing Society Invoice', 20, 20);
-    doc.text(`Invoice Number: ${invoice.invoiceNumber}`, 20, 30);
-    doc.text(`Date: ${invoice.date}`, 20, 40);
-    doc.text(`Member: ${invoice.memberName}`, 20, 50);
-    doc.text(`Flat: ${invoice.flat}`, 20, 60);
+    // Header styling
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(41, 128, 185);
+    doc.text('HOUSING SOCIETY INVOICE', 105, 18, { align: 'center' });
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.line(20, 22, 190, 22);
 
-    const tableData = standardCharges.map(item => [
+    // Invoice Info
+    doc.setFontSize(12);
+    doc.text(`Invoice Number:`, 20, 32);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${invoice.invoiceNumber}`, 60, 32);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date:`, 20, 40);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${new Date().toLocaleDateString()}`, 60, 40);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Member:`, 20, 48);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${invoice.memberName}`, 60, 48);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Flat:`, 20, 56);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${invoice.flat}`, 60, 56);
+    doc.setFont('helvetica', 'normal');
+
+    // Section separation
+    doc.setDrawColor(41, 128, 185);
+    doc.line(20, 60, 190, 60);
+
+    // Get unique charges with their total amounts
+    const uniqueCharges = standardCharges.reduce((acc, charge) => {
+      const existingCharge = acc.find(c => c.description === charge.description);
+      if (existingCharge) {
+        existingCharge.amount = Number(existingCharge.amount) + Number(charge.amount);
+      } else {
+        acc.push({ 
+          description: charge.description,
+          amount: Number(charge.amount)
+        });
+      }
+      return acc;
+    }, []);
+
+    const formatAmount = (amount) => {
+      // Convert to number and ensure it's a clean number
+      const num = Number(amount);
+      if (isNaN(num)) return '0.00';
+      // Format with 2 decimal places, no prefix, only ₹ and digits
+      return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+
+    const tableData = uniqueCharges.map(item => [
       item.description,
-      `₹${item.amount.toLocaleString()}`
+      `₹${formatAmount(item.amount)}`
     ]);
 
     autoTable(doc, {
       startY: 70,
       head: [['Description', 'Amount']],
       body: tableData,
+      theme: 'striped',
+      styles: {
+        fontSize: 12,
+        cellPadding: 6,
+        halign: 'center',
+        valign: 'middle',
+        font: 'helvetica',
+      },
+      columnStyles: {
+        0: { cellWidth: 100, halign: 'left' },
+        1: { cellWidth: 50, halign: 'right' }
+      },
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontSize: 13,
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle'
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      },
+      margin: { left: 20, right: 20 }
     });
 
-    const total = standardCharges.reduce((sum, item) => sum + item.amount, 0);
-    doc.text(`Total: ₹${total.toLocaleString()}`, 20, doc.lastAutoTable.finalY + 10);
+    // Calculate total
+    const total = uniqueCharges.reduce((sum, item) => sum + Number(item.amount), 0);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(41, 128, 185);
+    doc.text(`Total: ₹${formatAmount(total)}`, 160, doc.lastAutoTable.finalY + 15, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+
+    // Add footer
+    doc.setFontSize(11);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Thank you for being a valued member of our society!', 105, 285, { align: 'center' });
     doc.save(`${invoice.invoiceNumber}.pdf`);
   };
 

@@ -24,4 +24,10 @@ router.put('/charges/standard/:id', authMiddleware, invoiceController.updateStan
 // Add new standard charge
 router.post('/charges/standard', authMiddleware, invoiceController.addStandardCharge);
 
+// Download invoice PDF
+router.get('/:id/pdf', authMiddleware, invoiceController.downloadInvoicePDF);
+
+// Send invoice via email
+router.post('/:id/send-email', authMiddleware, invoiceController.sendInvoiceEmail);
+
 module.exports = router; 

@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
 // Get all standard charges
-const getAllCharges = async (req, res) => {
+exports.getAllCharges = async (req, res) => {
   try {
     const [charges] = await pool.query('SELECT * FROM standard_charges ORDER BY description');
     res.json(charges);
@@ -12,7 +12,7 @@ const getAllCharges = async (req, res) => {
 };
 
 // Get charge by ID
-const getChargeById = async (req, res) => {
+exports.getChargeById = async (req, res) => {
   try {
     const [charge] = await pool.query(
       'SELECT * FROM standard_charges WHERE id = ?',
@@ -31,7 +31,7 @@ const getChargeById = async (req, res) => {
 };
 
 // Create new charge
-const createCharge = async (req, res) => {
+exports.createCharge = async (req, res) => {
   const { description, amount } = req.body;
 
   try {
@@ -53,7 +53,7 @@ const createCharge = async (req, res) => {
 };
 
 // Update charge
-const updateCharge = async (req, res) => {
+exports.updateCharge = async (req, res) => {
   const { description, amount } = req.body;
   const chargeId = req.params.id;
 
@@ -80,7 +80,7 @@ const updateCharge = async (req, res) => {
 };
 
 // Delete charge
-const deleteCharge = async (req, res) => {
+exports.deleteCharge = async (req, res) => {
   const chargeId = req.params.id;
 
   try {
@@ -98,12 +98,4 @@ const deleteCharge = async (req, res) => {
     console.error('Error deleting standard charge:', error);
     res.status(500).json({ message: 'Error deleting standard charge' });
   }
-};
-
-module.exports = {
-  getAllCharges,
-  getChargeById,
-  createCharge,
-  updateCharge,
-  deleteCharge
 }; 
