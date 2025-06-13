@@ -1,23 +1,51 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
+// Log environment variables (without sensitive data)
+console.log('Environment Check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  DB_HOST: process.env.DB_HOST ? 'Set' : 'Not Set',
+  DB_PORT: process.env.DB_PORT ? 'Set' : 'Not Set',
+  DB_USER: process.env.DB_USER ? 'Set' : 'Not Set',
+  DB_NAME: process.env.DB_NAME ? 'Set' : 'Not Set',
+  DB_PASSWORD: process.env.DB_PASSWORD ? 'Set' : 'Not Set'
+});
+
+// Log database configuration (without sensitive data)
+console.log('Database Configuration:', {
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER || 'root',
+  database: process.env.DB_NAME || 'society_management',
+  ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
+});
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || 'root',
   database: process.env.DB_NAME || 'society_management',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  charset: 'utf8mb4'
+  charset: 'utf8mb4',
+  ssl: process.env.NODE_ENV === 'production' ? {
+    rejectUnauthorized: false
+  } : undefined
 });
 
 // Test the connection and verify table structure
 async function testConnection() {
   let connection;
   try {
+    console.log('Attempting database connection...');
     connection = await pool.getConnection();
     console.log('Database connected successfully');
+
+    // Test basic query
+    const [result] = await connection.query('SELECT 1 as test');
+    console.log('Basic query test:', result);
 
     // Verify users table structure
     const [columns] = await connection.query('SHOW COLUMNS FROM users');
@@ -37,10 +65,23 @@ async function testConnection() {
         ]
       );
       console.log('Admin user created successfully');
+    } else {
+      console.log('Admin user exists');
     }
   } catch (error) {
-    console.error('Database connection test failed:', error);
-    process.exit(1);
+    console.error('Database connection test failed:', {
+      message: error.message,
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage,
+      stack: error.stack
+    });
+    
+    // Don't exit in production, let the application retry
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
   } finally {
     if (connection) {
       connection.release();
@@ -53,8 +94,19 @@ testConnection();
 
 // Handle pool errors
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle connection', err);
-  process.exit(-1);
+  console.error('Unexpected error on idle connection:', {
+    message: err.message,
+    code: err.code,
+    errno: err.errno,
+    sqlState: err.sqlState,
+    sqlMessage: err.sqlMessage,
+    stack: err.stack
+  });
+  
+  // Don't exit in production, let the application retry
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(-1);
+  }
 });
 
 module.exports = pool;
