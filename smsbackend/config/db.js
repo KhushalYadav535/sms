@@ -4,33 +4,34 @@ require('dotenv').config();
 // Log environment check
 console.log('Environment Check:', {
   NODE_ENV: process.env.NODE_ENV,
-  DB_HOST: process.env.MYSQLHOST ? 'Set' : 'Not Set',
-  DB_PORT: process.env.MYSQLPORT ? 'Set' : 'Not Set',
-  DB_USER: process.env.MYSQLUSER ? 'Set' : 'Not Set',
-  DB_NAME: process.env.MYSQLDATABASE ? 'Set' : 'Not Set',
-  DB_PASSWORD: process.env.MYSQLPASSWORD ? 'Set' : 'Not Set'
+  DB_HOST: process.env.DB_HOST ? 'Set' : 'Not Set',
+  DB_PORT: process.env.DB_PORT ? 'Set' : 'Not Set',
+  DB_USER: process.env.DB_USER ? 'Set' : 'Not Set',
+  DB_NAME: process.env.DB_NAME ? 'Set' : 'Not Set',
+  DB_PASSWORD: process.env.DB_PASSWORD ? 'Set' : 'Not Set'
 });
 
 // Log database configuration (without sensitive data)
 console.log('Database Configuration:', {
-  host: process.env.MYSQLHOST,
-  port: process.env.MYSQLPORT,
-  user: process.env.MYSQLUSER,
-  database: process.env.MYSQLDATABASE,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  database: process.env.DB_NAME,
   ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
 });
 
 const pool = mysql.createPool({
-  host: process.env.MYSQLHOST || 'localhost',
-  port: process.env.MYSQLPORT || 3306,
-  user: process.env.MYSQLUSER || 'root',
-  password: process.env.MYSQLPASSWORD || 'root',
-  database: process.env.MYSQLDATABASE || 'sms_db',
+  host: process.env.DB_HOST || 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
+  port: process.env.DB_PORT || 4000,
+  user: process.env.DB_USER || '25vWeA97Nuy8DdK.root',
+  password: process.env.DB_PASSWORD || 'KAUA9uVC@iKVMLOA',
+  database: process.env.DB_NAME || 'test',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
   ssl: {
-    rejectUnauthorized: false  // Allow self-signed certificates
+    minVersion: 'TLSv1.2',
+    rejectUnauthorized: false
   }
 });
 
