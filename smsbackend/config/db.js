@@ -21,11 +21,11 @@ console.log('Database Configuration:', {
 });
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
-  port: process.env.DB_PORT || 4000,
-  user: process.env.DB_USER || '25vWeA97Nuy8DdK.root',
-  password: process.env.DB_PASSWORD || 'KAUA9uVC@iKVMLOA',
-  database: process.env.DB_NAME || 'test',
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
