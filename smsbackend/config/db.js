@@ -21,14 +21,17 @@ console.log('Database Configuration:', {
 });
 
 const pool = mysql.createPool({
-  host: 'localhost',
-  port: 3306,
-  user: 'root',
-  password: 'root',
-  database: 'sms_db',
+  host: process.env.MYSQLHOST || 'localhost',
+  port: process.env.MYSQLPORT || 3306,
+  user: process.env.MYSQLUSER || 'root',
+  password: process.env.MYSQLPASSWORD || 'root',
+  database: process.env.MYSQLDATABASE || 'sms_db',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  ssl: {
+    rejectUnauthorized: false  // Allow self-signed certificates
+  }
 });
 
 // Test the connection
