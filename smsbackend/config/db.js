@@ -34,8 +34,12 @@ if (process.env.MYSQL_URL) {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+    connectTimeout: 60000, // 60 seconds
+    acquireTimeout: 60000, // 60 seconds
+    timeout: 60000, // 60 seconds
     ssl: process.env.NODE_ENV === 'production' ? {
-      rejectUnauthorized: false
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2'
     } : undefined
   };
 
@@ -45,7 +49,8 @@ if (process.env.MYSQL_URL) {
     port: dbConfig.port,
     user: dbConfig.user,
     database: dbConfig.database,
-    ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
+    ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled',
+    connectTimeout: dbConfig.connectTimeout
   });
 
   pool = mysql.createPool(dbConfig);
