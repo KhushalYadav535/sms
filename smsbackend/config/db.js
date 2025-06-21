@@ -8,7 +8,8 @@ console.log('Environment Check:', {
   DB_PORT: process.env.DB_PORT ? 'Set' : 'Not Set',
   DB_USER: process.env.DB_USER ? 'Set' : 'Not Set',
   DB_NAME: process.env.DB_NAME ? 'Set' : 'Not Set',
-  DB_PASSWORD: process.env.DB_PASSWORD ? 'Set' : 'Not Set'
+  DB_PASSWORD: process.env.DB_PASSWORD ? 'Set' : 'Not Set',
+  MYSQL_URL: process.env.MYSQL_URL ? 'Set' : 'Not Set'
 });
 
 // Log database configuration (without sensitive data)
@@ -21,14 +22,17 @@ console.log('Database Configuration:', {
 });
 
 const pool = mysql.createPool({
-  uri: `mysql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  ssl: {
-    minVersion: 'TLSv1.2',
+  ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false
-  }
+  } : undefined
 });
 
 // Test the connection
