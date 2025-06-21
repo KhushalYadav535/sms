@@ -10,6 +10,7 @@ console.log('Environment Check:', {
   DB_NAME: process.env.DB_NAME ? 'Set' : 'Not Set',
   DB_PASSWORD: process.env.DB_PASSWORD ? 'Set' : 'Not Set',
   MYSQL_URL: process.env.MYSQL_URL ? 'Set' : 'Not Set',
+  MYSQL_PUBLIC_URL: process.env.MYSQL_PUBLIC_URL ? 'Set' : 'Not Set',
   MYSQLHOST: process.env.MYSQLHOST ? 'Set' : 'Not Set',
   MYSQLPORT: process.env.MYSQLPORT ? 'Set' : 'Not Set',
   MYSQLUSER: process.env.MYSQLUSER ? 'Set' : 'Not Set',
@@ -19,10 +20,73 @@ console.log('Environment Check:', {
 
 let pool;
 
-// Try to use MYSQL_URL first, then fall back to individual parameters
-if (process.env.MYSQL_URL) {
+// Try to use MYSQL_PUBLIC_URL first, then MYSQL_URL, then fall back to individual parameters
+if (process.env.MYSQL_PUBLIC_URL) {
+  console.log('Using MYSQL_PUBLIC_URL for database connection');
+  console.log('MYSQL_PUBLIC_URL:', process.env.MYSQL_PUBLIC_URL.replace(/:[^:@]*@/, ':****@')); // Hide password in logs
+  
+  // Parse the MYSQL_PUBLIC_URL to get connection options
+  const url = new URL(process.env.MYSQL_PUBLIC_URL);
+  const dbConfig = {
+    host: url.hostname,
+    port: parseInt(url.port),
+    user: url.username,
+    password: url.password,
+    database: url.pathname.substring(1), // Remove leading slash
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    connectTimeout: 60000, // 60 seconds
+    acquireTimeout: 60000, // 60 seconds
+    timeout: 60000, // 60 seconds
+    ssl: process.env.NODE_ENV === 'production' ? {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2'
+    } : undefined
+  };
+
+  console.log('Parsed Database Configuration (Public URL):', {
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    database: dbConfig.database,
+    ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
+  });
+
+  pool = mysql.createPool(dbConfig);
+} else if (process.env.MYSQL_URL) {
   console.log('Using MYSQL_URL for database connection');
-  pool = mysql.createPool(process.env.MYSQL_URL);
+  console.log('MYSQL_URL:', process.env.MYSQL_URL.replace(/:[^:@]*@/, ':****@')); // Hide password in logs
+  
+  // Parse the MYSQL_URL to get connection options
+  const url = new URL(process.env.MYSQL_URL);
+  const dbConfig = {
+    host: url.hostname,
+    port: parseInt(url.port),
+    user: url.username,
+    password: url.password,
+    database: url.pathname.substring(1), // Remove leading slash
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    connectTimeout: 60000, // 60 seconds
+    acquireTimeout: 60000, // 60 seconds
+    timeout: 60000, // 60 seconds
+    ssl: process.env.NODE_ENV === 'production' ? {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2'
+    } : undefined
+  };
+
+  console.log('Parsed Database Configuration:', {
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    database: dbConfig.database,
+    ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
+  });
+
+  pool = mysql.createPool(dbConfig);
 } else {
   // Use Railway's environment variables if available, otherwise fall back to custom ones
   const dbConfig = {
