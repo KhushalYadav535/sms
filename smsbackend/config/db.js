@@ -9,31 +9,47 @@ console.log('Environment Check:', {
   DB_USER: process.env.DB_USER ? 'Set' : 'Not Set',
   DB_NAME: process.env.DB_NAME ? 'Set' : 'Not Set',
   DB_PASSWORD: process.env.DB_PASSWORD ? 'Set' : 'Not Set',
-  MYSQL_URL: process.env.MYSQL_URL ? 'Set' : 'Not Set'
+  MYSQL_URL: process.env.MYSQL_URL ? 'Set' : 'Not Set',
+  MYSQLHOST: process.env.MYSQLHOST ? 'Set' : 'Not Set',
+  MYSQLPORT: process.env.MYSQLPORT ? 'Set' : 'Not Set',
+  MYSQLUSER: process.env.MYSQLUSER ? 'Set' : 'Not Set',
+  MYSQLPASSWORD: process.env.MYSQLPASSWORD ? 'Set' : 'Not Set',
+  MYSQLDATABASE: process.env.MYSQLDATABASE ? 'Set' : 'Not Set'
 });
 
-// Log database configuration (without sensitive data)
-console.log('Database Configuration:', {
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  database: process.env.DB_NAME,
-  ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
-});
+let pool;
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  ssl: process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : undefined
-});
+// Try to use MYSQL_URL first, then fall back to individual parameters
+if (process.env.MYSQL_URL) {
+  console.log('Using MYSQL_URL for database connection');
+  pool = mysql.createPool(process.env.MYSQL_URL);
+} else {
+  // Use Railway's environment variables if available, otherwise fall back to custom ones
+  const dbConfig = {
+    host: process.env.MYSQLHOST || process.env.DB_HOST,
+    port: parseInt(process.env.MYSQLPORT || process.env.DB_PORT),
+    user: process.env.MYSQLUSER || process.env.DB_USER,
+    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD,
+    database: process.env.MYSQLDATABASE || process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    ssl: process.env.NODE_ENV === 'production' ? {
+      rejectUnauthorized: false
+    } : undefined
+  };
+
+  // Log database configuration (without sensitive data)
+  console.log('Database Configuration:', {
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    database: dbConfig.database,
+    ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
+  });
+
+  pool = mysql.createPool(dbConfig);
+}
 
 // Test the connection
 async function testConnection() {
