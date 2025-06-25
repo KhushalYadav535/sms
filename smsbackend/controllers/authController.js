@@ -14,6 +14,11 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
     // Get user from database
     const result = await db.query(
       'SELECT * FROM users WHERE email = $1',
@@ -44,7 +49,26 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    
+    // Provide more specific error messages
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(503).json({ 
+        message: 'Database connection failed. Please try again later.',
+        error: 'Database unavailable'
+      });
+    }
+    
+    if (error.code === 'ENOTFOUND') {
+      return res.status(503).json({ 
+        message: 'Database host not found. Please check configuration.',
+        error: 'Database host error'
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Server error'
+    });
   }
 };
 

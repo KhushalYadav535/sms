@@ -69,6 +69,11 @@ if (process.env.DATABASE_URL) {
     }
   }
 
+  // Additional validation
+  if (!dbConfig.host || dbConfig.host === '5432') {
+    dbConfig.host = 'localhost';
+  }
+
   // Log database configuration (without sensitive data) only in development
   if (process.env.NODE_ENV === 'development') {
     console.log('Database Configuration:', {

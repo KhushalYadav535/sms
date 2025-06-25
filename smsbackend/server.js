@@ -95,6 +95,27 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Test database connection endpoint
+app.get('/test-db', async (req, res) => {
+  try {
+    const result = await db.query('SELECT NOW() as current_time, version() as db_version');
+    res.json({
+      status: 'Database connected',
+      timestamp: result.rows[0].current_time,
+      version: result.rows[0].db_version,
+      environment: process.env.NODE_ENV
+    });
+  } catch (error) {
+    console.error('Database test error:', error);
+    res.status(503).json({
+      status: 'Database connection failed',
+      error: error.message,
+      code: error.code,
+      environment: process.env.NODE_ENV
+    });
+  }
+});
+
 // Test database connection
 db.query('SELECT 1')
   .then(() => {
