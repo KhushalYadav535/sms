@@ -2,7 +2,8 @@ import axios from 'axios';
 
 // Create axios instance with default config
 const instance = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: 'https://sms-w12c.onrender.com/api',
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },

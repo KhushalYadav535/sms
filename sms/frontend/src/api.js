@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://sms-w12c.onrender.com/api';
 
 export const getToken = () => localStorage.getItem('token');
 
