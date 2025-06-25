@@ -11,14 +11,14 @@ exports.getAll = async (req, res) => {
     const params = [];
 
     if (type) {
-      query += ' WHERE t.type = ?';
+      query += ' WHERE t.type = $1';
       params.push(type);
     }
 
     query += ' ORDER BY t.date DESC';
 
-    const [transactions] = await db.query(query, params);
-    res.json(transactions);
+    const result = await db.query(query, params);
+    res.json(result.rows);
   } catch (error) {
     console.error('Get all transactions error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -30,22 +30,22 @@ exports.create = async (req, res) => {
     const { type, amount, description, category, date } = req.body;
     const created_by = req.user.id;
 
-    const [result] = await db.query(
+    const result = await db.query(
       `INSERT INTO transactions 
        (type, amount, description, category, date, created_by) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
       [type, amount, description, category, date, created_by]
     );
 
-    const [newTransaction] = await db.query(
+    const newTransactionResult = await db.query(
       `SELECT t.*, u.name as created_by_name 
        FROM transactions t 
        LEFT JOIN users u ON t.created_by = u.id 
-       WHERE t.id = ?`,
-      [result.insertId]
+       WHERE t.id = $1`,
+      [result.rows[0].id]
     );
 
-    res.status(201).json(newTransaction[0]);
+    res.status(201).json(newTransactionResult.rows[0]);
   } catch (error) {
     console.error('Create transaction error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -58,32 +58,32 @@ exports.update = async (req, res) => {
     const { type, amount, description, category, date } = req.body;
 
     // Check if transaction exists
-    const [transactions] = await db.query(
-      'SELECT id FROM transactions WHERE id = ?',
+    const transactionsResult = await db.query(
+      'SELECT id FROM transactions WHERE id = $1',
       [id]
     );
 
-    if (transactions.length === 0) {
+    if (transactionsResult.rows.length === 0) {
       return res.status(404).json({ message: 'Transaction not found' });
     }
 
     // Update transaction
     await db.query(
       `UPDATE transactions 
-       SET type = ?, amount = ?, description = ?, category = ?, date = ? 
-       WHERE id = ?`,
+       SET type = $1, amount = $2, description = $3, category = $4, date = $5 
+       WHERE id = $6`,
       [type, amount, description, category, date, id]
     );
 
-    const [updatedTransaction] = await db.query(
+    const updatedTransactionResult = await db.query(
       `SELECT t.*, u.name as created_by_name 
        FROM transactions t 
        LEFT JOIN users u ON t.created_by = u.id 
-       WHERE t.id = ?`,
+       WHERE t.id = $1`,
       [id]
     );
 
-    res.json(updatedTransaction[0]);
+    res.json(updatedTransactionResult.rows[0]);
   } catch (error) {
     console.error('Update transaction error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -95,17 +95,17 @@ exports.remove = async (req, res) => {
     const { id } = req.params;
 
     // Check if transaction exists
-    const [transactions] = await db.query(
-      'SELECT id FROM transactions WHERE id = ?',
+    const transactionsResult = await db.query(
+      'SELECT id FROM transactions WHERE id = $1',
       [id]
     );
 
-    if (transactions.length === 0) {
+    if (transactionsResult.rows.length === 0) {
       return res.status(404).json({ message: 'Transaction not found' });
     }
 
     // Delete transaction
-    await db.query('DELETE FROM transactions WHERE id = ?', [id]);
+    await db.query('DELETE FROM transactions WHERE id = $1', [id]);
 
     res.json({ message: 'Transaction deleted successfully' });
   } catch (error) {

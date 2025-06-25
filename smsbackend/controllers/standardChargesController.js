@@ -3,8 +3,8 @@ const pool = require('../config/db');
 // Get all standard charges
 exports.getAllCharges = async (req, res) => {
   try {
-    const [charges] = await pool.query('SELECT * FROM standard_charges ORDER BY description');
-    res.json(charges);
+    const result = await pool.query('SELECT * FROM standard_charges ORDER BY description');
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching standard charges:', error);
     res.status(500).json({ message: 'Error fetching standard charges' });
@@ -14,16 +14,16 @@ exports.getAllCharges = async (req, res) => {
 // Get charge by ID
 exports.getChargeById = async (req, res) => {
   try {
-    const [charge] = await pool.query(
-      'SELECT * FROM standard_charges WHERE id = ?',
+    const result = await pool.query(
+      'SELECT * FROM standard_charges WHERE id = $1',
       [req.params.id]
     );
 
-    if (charge.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Standard charge not found' });
     }
 
-    res.json(charge[0]);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Error fetching standard charge:', error);
     res.status(500).json({ message: 'Error fetching standard charge' });
@@ -35,13 +35,13 @@ exports.createCharge = async (req, res) => {
   const { description, amount } = req.body;
 
   try {
-    const [result] = await pool.query(
-      'INSERT INTO standard_charges (description, amount) VALUES (?, ?)',
+    const result = await pool.query(
+      'INSERT INTO standard_charges (description, amount) VALUES ($1, $2) RETURNING id',
       [description, amount]
     );
 
     res.status(201).json({
-      id: result.insertId,
+      id: result.rows[0].id,
       description,
       amount,
       message: 'Standard charge created successfully'
@@ -58,12 +58,12 @@ exports.updateCharge = async (req, res) => {
   const chargeId = req.params.id;
 
   try {
-    const [result] = await pool.query(
-      'UPDATE standard_charges SET description = ?, amount = ? WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE standard_charges SET description = $1, amount = $2 WHERE id = $3 RETURNING id',
       [description, amount, chargeId]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Standard charge not found' });
     }
 
@@ -84,12 +84,12 @@ exports.deleteCharge = async (req, res) => {
   const chargeId = req.params.id;
 
   try {
-    const [result] = await pool.query(
-      'DELETE FROM standard_charges WHERE id = ?',
+    const result = await pool.query(
+      'DELETE FROM standard_charges WHERE id = $1 RETURNING id',
       [chargeId]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Standard charge not found' });
     }
 

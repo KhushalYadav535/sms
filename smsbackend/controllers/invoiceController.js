@@ -10,14 +10,14 @@ const monthNames = [
 // Get all invoices
 const getAllInvoices = async (req, res) => {
   try {
-    const [invoices] = await pool.query(`
+    const result = await pool.query(`
       SELECT i.*, u.name as member_name, m.house_number as flat_number
       FROM invoices i
       JOIN members m ON i.member_id = m.id
       JOIN users u ON m.user_id = u.id
       ORDER BY i.generated_at DESC
     `);
-    res.json(invoices);
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching invoices:', error);
     res.status(500).json({ message: 'Error fetching invoices' });
@@ -27,23 +27,23 @@ const getAllInvoices = async (req, res) => {
 // Get invoice by ID
 const getInvoiceById = async (req, res) => {
   try {
-    const [invoice] = await pool.query(`
+    const invoiceResult = await pool.query(`
       SELECT i.*, m.name as member_name, m.flat_number
       FROM invoices i
       JOIN members m ON i.member_id = m.id
-      WHERE i.invoice_id = ?
+      WHERE i.invoice_id = $1
     `, [req.params.id]);
 
-    if (invoice.length === 0) {
+    if (invoiceResult.rows.length === 0) {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
-    const [items] = await pool.query(`
+    const itemsResult = await pool.query(`
       SELECT * FROM invoice_items
-      WHERE invoice_id = ?
+      WHERE invoice_id = $1
     `, [req.params.id]);
 
-    res.json({ ...invoice[0], items });
+    res.json({ ...invoiceResult.rows[0], items: itemsResult.rows });
   } catch (error) {
     console.error('Error fetching invoice:', error);
     res.status(500).json({ message: 'Error fetching invoice' });
@@ -56,16 +56,25 @@ const generateInvoices = async (req, res) => {
   
   try {
     // Get all active members
-    const [members] = await pool.query(`
-      SELECT m.id, u.name, m.house_number AS flat_number, u.email
-      FROM members m
-      JOIN users u ON m.user_id = u.id
-      WHERE m.status = 'active'
-      ${!includeAll ? 'AND m.id IN (?)' : ''}
-    `, includeAll ? [] : [selectedMembers]);
+    let membersResult;
+    if (includeAll) {
+      membersResult = await pool.query(`
+        SELECT m.id, u.name, m.house_number AS flat_number, u.email
+        FROM members m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.status = 'active'
+      `);
+    } else {
+      membersResult = await pool.query(`
+        SELECT m.id, u.name, m.house_number AS flat_number, u.email
+        FROM members m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.status = 'active' AND m.id = ANY($1)
+      `, [selectedMembers]);
+    }
 
     // Get standard charges
-    const [standardCharges] = await pool.query(`
+    const chargesResult = await pool.query(`
       SELECT * FROM standard_charges
       WHERE is_active = true
     `);
@@ -73,37 +82,37 @@ const generateInvoices = async (req, res) => {
     const generatedInvoices = [];
 
     // Inside generateInvoices, before the loop, add:
-    const [lastInvoice] = await pool.query(`
+    const lastInvoiceResult = await pool.query(`
       SELECT invoice_number FROM invoices
-      WHERE invoice_number LIKE ?
+      WHERE invoice_number LIKE $1
       ORDER BY invoice_number DESC
       LIMIT 1
     `, [`INV-${year}-%`]);
 
     let nextNumber = 1;
-    if (lastInvoice.length > 0) {
-      const lastNumber = parseInt(lastInvoice[0].invoice_number.split('-')[2]);
+    if (lastInvoiceResult.rows.length > 0) {
+      const lastNumber = parseInt(lastInvoiceResult.rows[0].invoice_number.split('-')[2]);
       nextNumber = lastNumber + 1;
     }
 
-    for (const member of members) {
+    for (const member of membersResult.rows) {
       // Generate invoice number
       const invoiceNumber = `INV-${year}-${nextNumber.toString().padStart(3, '0')}`;
       nextNumber++;
 
       // Calculate total amount
-      const totalAmount = standardCharges.reduce((sum, charge) => sum + Number(charge.amount), 0);
+      const totalAmount = chargesResult.rows.reduce((sum, charge) => sum + Number(charge.amount), 0);
 
       // Inside generateInvoices, before using month in the date string
       const monthNumber = (isNaN(month) ? (monthNames.indexOf(month) + 1) : parseInt(month));
       const monthStr = monthNumber.toString().padStart(2, '0');
 
       // Create invoice
-      const [result] = await pool.query(`
+      const result = await pool.query(`
         INSERT INTO invoices (
           invoice_number, member_id, flat_number, soc_code,
           bill_period, due_date, total_amount
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING invoice_id
       `, [
         invoiceNumber,
         member.id,
@@ -114,14 +123,14 @@ const generateInvoices = async (req, res) => {
         totalAmount
       ]);
 
-      const invoiceId = result.insertId;
+      const invoiceId = result.rows[0].invoice_id;
 
       // Create invoice items
-      for (const charge of standardCharges) {
+      for (const charge of chargesResult.rows) {
         await pool.query(`
           INSERT INTO invoice_items (
             invoice_id, description, amount, soc_code
-          ) VALUES (?, ?, ?, ?)
+          ) VALUES ($1, $2, $3, $4)
         `, [
           invoiceId,
           charge.description,
@@ -153,8 +162,8 @@ const updateInvoiceStatus = async (req, res) => {
   try {
     await pool.query(`
       UPDATE invoices
-      SET status = ?, paid_at = ?
-      WHERE invoice_id = ?
+      SET status = $1, paid_at = $2
+      WHERE invoice_id = $3
     `, [status, status === 'Paid' ? new Date() : null, req.params.id]);
 
     res.json({ message: 'Invoice status updated successfully' });
@@ -167,12 +176,12 @@ const updateInvoiceStatus = async (req, res) => {
 // Get standard charges
 const getStandardCharges = async (req, res) => {
   try {
-    const [charges] = await pool.query(`
+    const result = await pool.query(`
       SELECT * FROM standard_charges
       WHERE is_active = true
       ORDER BY description
     `);
-    res.json(charges);
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching standard charges:', error);
     res.status(500).json({ message: 'Error fetching standard charges' });
@@ -185,8 +194,8 @@ const updateStandardCharge = async (req, res) => {
   try {
     await pool.query(`
       UPDATE standard_charges
-      SET description = ?, amount = ?, is_active = ?
-      WHERE charge_id = ?
+      SET description = $1, amount = $2, is_active = $3
+      WHERE charge_id = $4
     `, [description, amount, is_active, req.params.id]);
 
     res.json({ message: 'Standard charge updated successfully' });
@@ -200,14 +209,14 @@ const updateStandardCharge = async (req, res) => {
 const addStandardCharge = async (req, res) => {
   const { description, amount } = req.body;
   try {
-    const [result] = await pool.query(`
+    const result = await pool.query(`
       INSERT INTO standard_charges (description, amount)
-      VALUES (?, ?)
+      VALUES ($1, $2) RETURNING *
     `, [description, amount]);
 
     res.json({
       message: 'Standard charge added successfully',
-      chargeId: result.insertId
+      charge: result.rows[0]
     });
   } catch (error) {
     console.error('Error adding standard charge:', error);

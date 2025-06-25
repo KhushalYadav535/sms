@@ -11,13 +11,13 @@ const reportsModel = {
           COUNT(*) as transaction_count,
           DATE(date) as transaction_date
         FROM accounting
-        WHERE date BETWEEN ? AND ?
+        WHERE date BETWEEN $1 AND $2
         GROUP BY type, DATE(date)
         ORDER BY transaction_date DESC
       `;
       
-      const [rows] = await db.query(query, [startDate, endDate]);
-      return rows;
+      const result = await db.query(query, [startDate, endDate]);
+      return result.rows;
     } catch (error) {
       throw error;
     }
@@ -41,8 +41,8 @@ const reportsModel = {
         ORDER BY total_dues DESC
       `;
       
-      const [rows] = await db.query(query);
-      return rows;
+      const result = await db.query(query);
+      return result.rows;
     } catch (error) {
       throw error;
     }
@@ -62,12 +62,12 @@ const reportsModel = {
           m.block
         FROM complaints c
         JOIN members m ON c.member_id = m.id
-        WHERE c.date BETWEEN ? AND ?
+        WHERE c.date BETWEEN $1 AND $2
         ORDER BY c.date DESC
       `;
       
-      const [rows] = await db.query(query, [startDate, endDate]);
-      return rows;
+      const result = await db.query(query, [startDate, endDate]);
+      return result.rows;
     } catch (error) {
       throw error;
     }
@@ -83,12 +83,12 @@ const reportsModel = {
           date,
           created_by
         FROM notices
-        WHERE date BETWEEN ? AND ?
+        WHERE date BETWEEN $1 AND $2
         ORDER BY date DESC
       `;
       
-      const [rows] = await db.query(query, [startDate, endDate]);
-      return rows;
+      const result = await db.query(query, [startDate, endDate]);
+      return result.rows;
     } catch (error) {
       throw error;
     }

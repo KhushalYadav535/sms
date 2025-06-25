@@ -4,9 +4,9 @@ class User {
   static async findByEmail(email) {
     try {
       console.log('Finding user by email:', email);
-      const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-      console.log('Query result:', rows);
-      return rows[0];
+      const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+      console.log('Query result:', result.rows);
+      return result.rows[0];
     } catch (error) {
       console.error('Error finding user by email:', error);
       throw error;
@@ -24,41 +24,40 @@ class User {
       }
       
       // First verify the table structure
-      const [columns] = await db.query('SHOW COLUMNS FROM users');
-      console.log('Table columns:', columns.map(col => col.Field).join(', '));
+      const columnsResult = await db.query(`
+        SELECT column_name, data_type, is_nullable 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        ORDER BY ordinal_position
+      `);
+      console.log('Table columns:', columnsResult.rows.map(col => col.column_name).join(', '));
 
       // Check if email already exists
-      const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
-      if (existing.length > 0) {
+      const existingResult = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+      if (existingResult.rows.length > 0) {
         throw new Error('Email already exists');
       }
 
       // Get the role column definition
-      const [roleColumn] = await db.query("SHOW COLUMNS FROM users WHERE Field = 'role'");
-      const roleEnum = roleColumn[0].Type.match(/enum\((.*)\)/)[1].replace(/'/g, '').split(',');
-      console.log('Available roles in database:', roleEnum);
-
-      // Ensure role is in the database's ENUM
-      if (!roleEnum.includes(role)) {
-        throw new Error(`Invalid role value. Must be one of: ${roleEnum.join(', ')}`);
-      }
+      const roleColumnResult = await db.query(`
+        SELECT column_name, data_type, check_clause
+        FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'role'
+      `);
+      console.log('Role column definition:', roleColumnResult.rows[0]);
 
       // Insert the new user
-      const [result] = await db.query(
-        'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+      const result = await db.query(
+        'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *',
         [name, email, password, role]
       );
       
-      console.log('Insert result:', result);
+      console.log('Insert result:', result.rows[0]);
       
-      // Get the created user
-      const [newUser] = await db.query('SELECT * FROM users WHERE id = ?', [result.insertId]);
-      console.log('Created user:', newUser[0]);
-      
-      return newUser[0];
+      return result.rows[0];
     } catch (error) {
       console.error('Error creating user:', error);
-      if (error.code === 'ER_DATA_TOO_LONG' || error.code === 'WARN_DATA_TRUNCATED') {
+      if (error.code === '23514') { // Check constraint violation
         throw new Error('Invalid role value. Must be one of: admin, user, treasure, security, secretary');
       }
       throw error;
@@ -68,9 +67,9 @@ class User {
   static async findById(id) {
     try {
       console.log('Finding user by id:', id);
-      const [rows] = await db.query('SELECT * FROM users WHERE id = ?', [id]);
-      console.log('Query result:', rows);
-      return rows[0];
+      const result = await db.query('SELECT * FROM users WHERE id = $1', [id]);
+      console.log('Query result:', result.rows);
+      return result.rows[0];
     } catch (error) {
       console.error('Error finding user by id:', error);
       throw error;
@@ -83,7 +82,7 @@ class User {
       const allowedFields = ['name', 'email', 'password', 'role'];
       const updates = Object.keys(data)
         .filter(key => allowedFields.includes(key))
-        .map(key => `${key} = ?`);
+        .map((key, index) => `${key} = $${index + 2}`);
       
       if (updates.length === 0) {
         throw new Error('No valid fields to update');
@@ -101,20 +100,20 @@ class User {
         .filter(key => allowedFields.includes(key))
         .map(key => data[key]);
 
-      const [result] = await db.query(
-        `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
-        [...values, id]
+      const result = await db.query(
+        `UPDATE users SET ${updates.join(', ')} WHERE id = $1 RETURNING *`,
+        [id, ...values]
       );
 
-      console.log('Update result:', result);
-      if (result.affectedRows === 0) {
+      console.log('Update result:', result.rows[0]);
+      if (result.rows.length === 0) {
         throw new Error('User not found');
       }
 
-      return this.findById(id);
+      return result.rows[0];
     } catch (error) {
       console.error('Error updating user:', error);
-      if (error.code === 'ER_DATA_TOO_LONG' || error.code === 'WARN_DATA_TRUNCATED') {
+      if (error.code === '23514') { // Check constraint violation
         throw new Error('Invalid role value. Must be one of: admin, user, treasure, security, secretary');
       }
       throw error;
@@ -123,8 +122,8 @@ class User {
 
   static async findAll() {
     try {
-      const [rows] = await db.query('SELECT * FROM users');
-      return rows;
+      const result = await db.query('SELECT * FROM users');
+      return result.rows;
     } catch (error) {
       console.error('Error finding all users:', error);
       throw error;
@@ -133,8 +132,8 @@ class User {
 
   static async delete(id) {
     try {
-      const [result] = await db.query('DELETE FROM users WHERE id = ?', [id]);
-      if (result.affectedRows === 0) {
+      const result = await db.query('DELETE FROM users WHERE id = $1', [id]);
+      if (result.rowCount === 0) {
         throw new Error('User not found');
       }
       return true;

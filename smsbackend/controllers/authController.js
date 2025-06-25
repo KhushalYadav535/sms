@@ -15,16 +15,16 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     // Get user from database
-    const [users] = await db.query(
-      'SELECT * FROM users WHERE email = ?',
+    const result = await db.query(
+      'SELECT * FROM users WHERE email = $1',
       [email]
     );
 
-    if (users.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const user = users[0];
+    const user = result.rows[0];
 
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
@@ -53,12 +53,12 @@ exports.register = async (req, res) => {
     const { name, email, password, role = 'user' } = req.body;
 
     // Check if user already exists
-    const [existingUsers] = await db.query(
-      'SELECT id FROM users WHERE email = ?',
+    const existingResult = await db.query(
+      'SELECT id FROM users WHERE email = $1',
       [email]
     );
 
-    if (existingUsers.length > 0) {
+    if (existingResult.rows.length > 0) {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
@@ -67,21 +67,18 @@ exports.register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Insert new user
-    const [result] = await db.query(
-      'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+    const result = await db.query(
+      'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
       [name, email, hashedPassword, role]
     );
 
-    const [newUser] = await db.query(
-      'SELECT id, name, email, role FROM users WHERE id = ?',
-      [result.insertId]
-    );
+    const newUser = result.rows[0];
 
     // Generate token
-    const token = generateToken(newUser[0]);
+    const token = generateToken(newUser);
 
     res.status(201).json({
-      user: newUser[0],
+      user: newUser,
       token
     });
   } catch (error) {
@@ -92,16 +89,16 @@ exports.register = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
   try {
-    const [users] = await db.query(
-      'SELECT id, name, email, role FROM users WHERE id = ?',
+    const result = await db.query(
+      'SELECT id, name, email, role FROM users WHERE id = $1',
       [req.user.id]
     );
 
-    if (users.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json(users[0]);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -115,28 +112,28 @@ exports.updateProfile = async (req, res) => {
 
     // Check if email is already taken by another user
     if (email) {
-      const [existingUsers] = await db.query(
-        'SELECT id FROM users WHERE email = ? AND id != ?',
+      const existingResult = await db.query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
         [email, userId]
       );
 
-      if (existingUsers.length > 0) {
+      if (existingResult.rows.length > 0) {
         return res.status(400).json({ message: 'Email already in use' });
       }
     }
 
     // Update user
     await db.query(
-      'UPDATE users SET name = ?, email = ? WHERE id = ?',
+      'UPDATE users SET name = $1, email = $2 WHERE id = $3',
       [name, email, userId]
     );
 
-    const [updatedUser] = await db.query(
-      'SELECT id, name, email, role FROM users WHERE id = ?',
+    const updatedResult = await db.query(
+      'SELECT id, name, email, role FROM users WHERE id = $1',
       [userId]
     );
 
-    res.json(updatedUser[0]);
+    res.json(updatedResult.rows[0]);
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -149,17 +146,17 @@ exports.changePassword = async (req, res) => {
     const userId = req.user.id;
 
     // Get current user
-    const [users] = await db.query(
-      'SELECT password FROM users WHERE id = ?',
+    const result = await db.query(
+      'SELECT password FROM users WHERE id = $1',
       [userId]
     );
 
-    if (users.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Verify current password
-    const isValidPassword = await bcrypt.compare(currentPassword, users[0].password);
+    const isValidPassword = await bcrypt.compare(currentPassword, result.rows[0].password);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Current password is incorrect' });
     }
@@ -170,7 +167,7 @@ exports.changePassword = async (req, res) => {
 
     // Update password
     await db.query(
-      'UPDATE users SET password = ? WHERE id = ?',
+      'UPDATE users SET password = $1 WHERE id = $2',
       [hashedPassword, userId]
     );
 

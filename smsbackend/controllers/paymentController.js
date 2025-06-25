@@ -3,7 +3,7 @@ const pool = require('../config/db');
 // Get all payments
 const getAllPayments = async (req, res) => {
   try {
-    const [payments] = await pool.query(`
+    const result = await pool.query(`
       SELECT 
         p.*,
         i.invoice_number,
@@ -14,7 +14,7 @@ const getAllPayments = async (req, res) => {
       JOIN members m ON i.member_id = m.id
       ORDER BY p.payment_date DESC
     `);
-    res.json(payments);
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching payments:', error);
     res.status(500).json({ message: 'Error fetching payments' });
@@ -24,7 +24,7 @@ const getAllPayments = async (req, res) => {
 // Get payment by ID
 const getPaymentById = async (req, res) => {
   try {
-    const [payment] = await pool.query(`
+    const result = await pool.query(`
       SELECT 
         p.*,
         i.invoice_number,
@@ -33,14 +33,14 @@ const getPaymentById = async (req, res) => {
       FROM payments p
       JOIN invoices i ON p.invoice_id = i.id
       JOIN members m ON i.member_id = m.id
-      WHERE p.id = ?
+      WHERE p.id = $1
     `, [req.params.id]);
 
-    if (payment.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Payment not found' });
     }
 
-    res.json(payment[0]);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Error fetching payment:', error);
     res.status(500).json({ message: 'Error fetching payment' });
@@ -51,38 +51,36 @@ const getPaymentById = async (req, res) => {
 const createPayment = async (req, res) => {
   const { invoice_id, amount, payment_method, payment_date, status } = req.body;
 
+  const client = await pool.connect();
   try {
-    // Start transaction
-    await pool.query('START TRANSACTION');
-
+    await client.query('BEGIN');
     // Insert payment
-    const [result] = await pool.query(`
+    const result = await client.query(`
       INSERT INTO payments (
         invoice_id, amount, payment_method, payment_date, status
-      ) VALUES (?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5) RETURNING id
     `, [invoice_id, amount, payment_method, payment_date, status]);
 
     // Update invoice status if payment is completed
     if (status === 'completed') {
-      await pool.query(`
+      await client.query(`
         UPDATE invoices 
         SET status = 'paid' 
-        WHERE id = ?
+        WHERE id = $1
       `, [invoice_id]);
     }
 
-    // Commit transaction
-    await pool.query('COMMIT');
-
+    await client.query('COMMIT');
     res.status(201).json({
-      id: result.insertId,
+      id: result.rows[0].id,
       message: 'Payment created successfully'
     });
   } catch (error) {
-    // Rollback transaction on error
-    await pool.query('ROLLBACK');
+    await client.query('ROLLBACK');
     console.error('Error creating payment:', error);
     res.status(500).json({ message: 'Error creating payment' });
+  } finally {
+    client.release();
   }
 };
 
@@ -90,52 +88,49 @@ const createPayment = async (req, res) => {
 const updatePaymentStatus = async (req, res) => {
   const { status } = req.body;
   const paymentId = req.params.id;
-
+  const client = await pool.connect();
   try {
-    // Start transaction
-    await pool.query('START TRANSACTION');
-
+    await client.query('BEGIN');
     // Get payment details
-    const [payment] = await pool.query(
-      'SELECT invoice_id FROM payments WHERE id = ?',
+    const paymentResult = await client.query(
+      'SELECT invoice_id FROM payments WHERE id = $1',
       [paymentId]
     );
 
-    if (payment.length === 0) {
-      await pool.query('ROLLBACK');
+    if (paymentResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Payment not found' });
     }
 
     // Update payment status
-    await pool.query(
-      'UPDATE payments SET status = ? WHERE id = ?',
+    await client.query(
+      'UPDATE payments SET status = $1 WHERE id = $2',
       [status, paymentId]
     );
 
     // Update invoice status if payment is completed
     if (status === 'completed') {
-      await pool.query(
-        'UPDATE invoices SET status = ? WHERE id = ?',
-        ['paid', payment[0].invoice_id]
+      await client.query(
+        'UPDATE invoices SET status = $1 WHERE id = $2',
+        ['paid', paymentResult.rows[0].invoice_id]
       );
     }
 
-    // Commit transaction
-    await pool.query('COMMIT');
-
+    await client.query('COMMIT');
     res.json({ message: 'Payment status updated successfully' });
   } catch (error) {
-    // Rollback transaction on error
-    await pool.query('ROLLBACK');
+    await client.query('ROLLBACK');
     console.error('Error updating payment status:', error);
     res.status(500).json({ message: 'Error updating payment status' });
+  } finally {
+    client.release();
   }
 };
 
 // Get payments by invoice ID
 const getPaymentsByInvoice = async (req, res) => {
   try {
-    const [payments] = await pool.query(`
+    const result = await pool.query(`
       SELECT 
         p.*,
         i.invoice_number,
@@ -144,11 +139,11 @@ const getPaymentsByInvoice = async (req, res) => {
       FROM payments p
       JOIN invoices i ON p.invoice_id = i.id
       JOIN members m ON i.member_id = m.id
-      WHERE p.invoice_id = ?
+      WHERE p.invoice_id = $1
       ORDER BY p.payment_date DESC
     `, [req.params.invoiceId]);
 
-    res.json(payments);
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching payments by invoice:', error);
     res.status(500).json({ message: 'Error fetching payments by invoice' });
@@ -158,7 +153,7 @@ const getPaymentsByInvoice = async (req, res) => {
 // Get payments by member ID
 const getPaymentsByMember = async (req, res) => {
   try {
-    const [payments] = await pool.query(`
+    const result = await pool.query(`
       SELECT 
         p.*,
         i.invoice_number,
@@ -167,11 +162,11 @@ const getPaymentsByMember = async (req, res) => {
       FROM payments p
       JOIN invoices i ON p.invoice_id = i.id
       JOIN members m ON i.member_id = m.id
-      WHERE m.id = ?
+      WHERE m.id = $1
       ORDER BY p.payment_date DESC
     `, [req.params.memberId]);
 
-    res.json(payments);
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching payments by member:', error);
     res.status(500).json({ message: 'Error fetching payments by member' });

@@ -1,165 +1,157 @@
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 require('dotenv').config();
 
-// Log environment check
-console.log('Environment Check:', {
-  NODE_ENV: process.env.NODE_ENV,
-  DB_HOST: process.env.DB_HOST ? 'Set' : 'Not Set',
-  DB_PORT: process.env.DB_PORT ? 'Set' : 'Not Set',
-  DB_USER: process.env.DB_USER ? 'Set' : 'Not Set',
-  DB_NAME: process.env.DB_NAME ? 'Set' : 'Not Set',
-  DB_PASSWORD: process.env.DB_PASSWORD ? 'Set' : 'Not Set',
-  MYSQL_URL: process.env.MYSQL_URL ? 'Set' : 'Not Set',
-  MYSQL_PUBLIC_URL: process.env.MYSQL_PUBLIC_URL ? 'Set' : 'Not Set',
-  MYSQLHOST: process.env.MYSQLHOST ? 'Set' : 'Not Set',
-  MYSQLPORT: process.env.MYSQLPORT ? 'Set' : 'Not Set',
-  MYSQLUSER: process.env.MYSQLUSER ? 'Set' : 'Not Set',
-  MYSQLPASSWORD: process.env.MYSQLPASSWORD ? 'Set' : 'Not Set',
-  MYSQLDATABASE: process.env.MYSQLDATABASE ? 'Set' : 'Not Set'
-});
+// Log environment check only in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('Environment Check:', {
+    NODE_ENV: process.env.NODE_ENV,
+    DB_HOST: process.env.DB_HOST ? 'Set' : 'Not Set',
+    DB_PORT: process.env.DB_PORT ? 'Set' : 'Not Set',
+    DB_USER: process.env.DB_USER ? 'Set' : 'Not Set',
+    DB_NAME: process.env.DB_NAME ? 'Set' : 'Not Set',
+    DB_PASSWORD: process.env.DB_PASSWORD ? 'Set' : 'Not Set',
+    DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not Set',
+    PGHOST: process.env.PGHOST ? 'Set' : 'Not Set',
+    PGPORT: process.env.PGPORT ? 'Set' : 'Not Set',
+    PGUSER: process.env.PGUSER ? 'Set' : 'Not Set',
+    PGPASSWORD: process.env.PGPASSWORD ? 'Set' : 'Not Set',
+    PGDATABASE: process.env.PGDATABASE ? 'Set' : 'Not Set'
+  });
+}
 
 let pool;
 
-// Try to use MYSQL_PUBLIC_URL first, then MYSQL_URL, then fall back to individual parameters
-if (process.env.MYSQL_PUBLIC_URL) {
-  console.log('Using MYSQL_PUBLIC_URL for database connection');
-  console.log('MYSQL_PUBLIC_URL:', process.env.MYSQL_PUBLIC_URL.replace(/:[^:@]*@/, ':****@')); // Hide password in logs
+// Try to use DATABASE_URL first, then fall back to individual parameters
+if (process.env.DATABASE_URL) {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Using DATABASE_URL for database connection');
+    console.log('DATABASE_URL:', process.env.DATABASE_URL.replace(/:[^:@]*@/, ':****@')); // Hide password in logs
+  }
   
-  // Parse the MYSQL_PUBLIC_URL to get connection options
-  const url = new URL(process.env.MYSQL_PUBLIC_URL);
   const dbConfig = {
-    host: url.hostname,
-    port: parseInt(url.port),
-    user: url.username,
-    password: url.password,
-    database: url.pathname.substring(1), // Remove leading slash
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    connectTimeout: 60000, // 60 seconds
-    acquireTimeout: 60000, // 60 seconds
-    timeout: 60000, // 60 seconds
+    connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? {
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2'
-    } : undefined
+      rejectUnauthorized: false
+    } : false,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 60000
   };
 
-  console.log('Parsed Database Configuration (Public URL):', {
-    host: dbConfig.host,
-    port: dbConfig.port,
-    user: dbConfig.user,
-    database: dbConfig.database,
-    ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
-  });
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Database Configuration (URL):', {
+      ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
+    });
+  }
 
-  pool = mysql.createPool(dbConfig);
-} else if (process.env.MYSQL_URL) {
-  console.log('Using MYSQL_URL for database connection');
-  console.log('MYSQL_URL:', process.env.MYSQL_URL.replace(/:[^:@]*@/, ':****@')); // Hide password in logs
-  
-  // Parse the MYSQL_URL to get connection options
-  const url = new URL(process.env.MYSQL_URL);
-  const dbConfig = {
-    host: url.hostname,
-    port: parseInt(url.port),
-    user: url.username,
-    password: url.password,
-    database: url.pathname.substring(1), // Remove leading slash
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    connectTimeout: 60000, // 60 seconds
-    acquireTimeout: 60000, // 60 seconds
-    timeout: 60000, // 60 seconds
-    ssl: process.env.NODE_ENV === 'production' ? {
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2'
-    } : undefined
-  };
-
-  console.log('Parsed Database Configuration:', {
-    host: dbConfig.host,
-    port: dbConfig.port,
-    user: dbConfig.user,
-    database: dbConfig.database,
-    ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled'
-  });
-
-  pool = mysql.createPool(dbConfig);
+  pool = new Pool(dbConfig);
 } else {
-  // Use Railway's environment variables if available, otherwise fall back to custom ones
+  // Use PostgreSQL environment variables if available, otherwise fall back to custom ones
   const dbConfig = {
-    host: process.env.MYSQLHOST || process.env.DB_HOST,
-    port: parseInt(process.env.MYSQLPORT || process.env.DB_PORT),
-    user: process.env.MYSQLUSER || process.env.DB_USER,
-    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD,
-    database: process.env.MYSQLDATABASE || process.env.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    connectTimeout: 60000, // 60 seconds
-    acquireTimeout: 60000, // 60 seconds
-    timeout: 60000, // 60 seconds
+    host: process.env.PGHOST || process.env.DB_HOST,
+    port: parseInt(process.env.PGPORT || process.env.DB_PORT || '5432'),
+    user: process.env.PGUSER || process.env.DB_USER,
+    password: process.env.PGPASSWORD || process.env.DB_PASSWORD,
+    database: process.env.PGDATABASE || process.env.DB_NAME,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 60000,
     ssl: process.env.NODE_ENV === 'production' ? {
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2'
-    } : undefined
+      rejectUnauthorized: false
+    } : false
   };
 
-  // Log database configuration (without sensitive data)
-  console.log('Database Configuration:', {
-    host: dbConfig.host,
-    port: dbConfig.port,
-    user: dbConfig.user,
-    database: dbConfig.database,
-    ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled',
-    connectTimeout: dbConfig.connectTimeout
-  });
+  // Log database configuration (without sensitive data) only in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Database Configuration:', {
+      host: dbConfig.host,
+      port: dbConfig.port,
+      user: dbConfig.user,
+      database: dbConfig.database,
+      ssl: process.env.NODE_ENV === 'production' ? 'Enabled' : 'Disabled',
+      connectionTimeoutMillis: dbConfig.connectionTimeoutMillis
+    });
+  }
 
-  pool = mysql.createPool(dbConfig);
+  pool = new Pool(dbConfig);
 }
 
 // Test the connection
 async function testConnection() {
-  let connection;
+  let client;
   try {
-    console.log('Attempting database connection...');
-    connection = await pool.getConnection();
-    console.log('Database connected successfully');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Attempting database connection...');
+    }
+    client = await pool.connect();
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Database connected successfully');
+    }
 
     // Test basic query
-    const [result] = await connection.query('SELECT 1 as test');
-    console.log('Basic query test:', result);
+    const result = await client.query('SELECT NOW() as test');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Basic query test:', result.rows[0]);
+    }
 
-    // Verify users table structure
-    const [columns] = await connection.query('SHOW COLUMNS FROM users');
-    console.log('Users table columns:', columns.map(col => col.Field).join(', '));
-
-    // Verify admin user exists
-    const [admin] = await connection.query('SELECT * FROM users WHERE email = ?', ['admin@society.com']);
-    if (admin.length === 0) {
-      console.log('Admin user not found, creating...');
-      await connection.query(
-        'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-        [
-          'Admin User',
-          'admin@society.com',
-          '$2b$10$33OGfn44KVCNPswdBzsYPO4IdS5HdaexwK4SRsI4ZzlJzNnN6ps3G',
-          'admin'
-        ]
+    // Check if users table exists
+    const tableCheck = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'users'
       );
-      console.log('Admin user created successfully');
+    `);
+    
+    const tableExists = tableCheck.rows[0].exists;
+    
+    if (tableExists) {
+      // Verify users table structure
+      const columnsResult = await client.query(`
+        SELECT column_name, data_type, is_nullable 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        ORDER BY ordinal_position
+      `);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Users table columns:', columnsResult.rows.map(col => col.column_name).join(', '));
+      }
+
+      // Verify admin user exists
+      const adminResult = await client.query('SELECT * FROM users WHERE email = $1', ['admin@society.com']);
+      if (adminResult.rows.length === 0) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Admin user not found, creating...');
+        }
+        await client.query(
+          'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)',
+          [
+            'Admin User',
+            'admin@society.com',
+            '$2b$10$33OGfn44KVCNPswdBzsYPO4IdS5HdaexwK4SRsI4ZzlJzNnN6ps3G',
+            'admin'
+          ]
+        );
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Admin user created successfully');
+        }
+      } else {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Admin user exists');
+        }
+      }
     } else {
-      console.log('Admin user exists');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Users table does not exist yet. Tables will be created when server starts.');
+      }
     }
   } catch (error) {
     console.error('Database connection test failed:', {
       message: error.message,
       code: error.code,
-      errno: error.errno,
-      sqlState: error.sqlState,
-      sqlMessage: error.sqlMessage,
+      detail: error.detail,
+      hint: error.hint,
+      position: error.position,
       stack: error.stack
     });
     
@@ -168,8 +160,8 @@ async function testConnection() {
       process.exit(1);
     }
   } finally {
-    if (connection) {
-      connection.release();
+    if (client) {
+      client.release();
     }
   }
 }
@@ -182,9 +174,9 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle connection:', {
     message: err.message,
     code: err.code,
-    errno: err.errno,
-    sqlState: err.sqlState,
-    sqlMessage: err.sqlMessage,
+    detail: err.detail,
+    hint: err.hint,
+    position: err.position,
     stack: err.stack
   });
   

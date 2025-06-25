@@ -58,13 +58,24 @@ app.use(helmet());
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
-  process.env.FRONTEND_URL
+  'http://localhost:3000',
+  process.env.FRONTEND_URL,
+  process.env.CLIENT_URL
 ].filter(Boolean);
 
 logger.info('Allowed CORS origins:', allowedOrigins);
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -88,11 +99,41 @@ db.query('SELECT 1')
   .then(() => {
     logger.info('Database connected successfully');
     
-    // Verify users table structure
-    return db.query('SHOW COLUMNS FROM users');
+    // Check if users table exists and create if it doesn't
+    return db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'users'
+      );
+    `);
   })
-  .then(([columns]) => {
-    logger.info('Users table columns:', columns.map(col => col.Field).join(', '));
+  .then((result) => {
+    const tableExists = result.rows[0].exists;
+    
+    if (!tableExists) {
+      logger.info('Users table does not exist, creating tables...');
+      // Import and run setup SQL
+      const fs = require('fs');
+      const path = require('path');
+      const setupSQL = fs.readFileSync(path.join(__dirname, 'setup.sql'), 'utf8');
+      return db.query(setupSQL);
+    } else {
+      logger.info('Users table exists');
+      return db.query(`
+        SELECT column_name, data_type, is_nullable 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        ORDER BY ordinal_position
+      `);
+    }
+  })
+  .then((result) => {
+    if (result.rows && result.rows.length > 0) {
+      logger.info('Users table columns:', result.rows.map(col => col.column_name).join(', '));
+    } else {
+      logger.info('Tables created successfully');
+    }
   })
   .catch(err => {
     logger.error('Database connection error:', err);
