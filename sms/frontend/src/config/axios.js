@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with default config
 const instance = axios.create({
-  baseURL: 'https://sms-w12c.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://sms-w12c.onrender.com/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

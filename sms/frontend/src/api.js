@@ -1,4 +1,4 @@
-const API_URL = 'https://sms-w12c.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://sms-w12c.onrender.com/api';
 
 export const getToken = () => localStorage.getItem('token');
 
