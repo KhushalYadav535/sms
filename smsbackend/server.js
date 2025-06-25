@@ -137,7 +137,12 @@ db.query('SELECT 1')
   })
   .catch(err => {
     logger.error('Database connection error:', err);
-    process.exit(1);
+    // Don't exit in production, let the application continue
+    if (process.env.NODE_ENV === 'production') {
+      logger.warn('Continuing without database connection in production');
+    } else {
+      process.exit(1);
+    }
   });
 
 // API Routes

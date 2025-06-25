@@ -166,8 +166,10 @@ async function testConnection() {
   }
 }
 
-// Run the connection test
-testConnection();
+// Run the connection test only in development
+if (process.env.NODE_ENV === 'development') {
+  testConnection();
+}
 
 // Handle pool errors
 pool.on('error', (err) => {

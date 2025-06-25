@@ -9,7 +9,7 @@
     "build": "npm install"
   },
   "engines": {
-    "node": "18.x"
+    "node": "20.x"
   },
   "author": "Your Name",
   "license": "ISC",
