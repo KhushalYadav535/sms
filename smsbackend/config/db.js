@@ -48,11 +48,11 @@ if (process.env.DATABASE_URL) {
 } else {
   // Use PostgreSQL environment variables if available, otherwise fall back to custom ones
   const dbConfig = {
-    host: process.env.PGHOST || process.env.DB_HOST,
+    host: process.env.PGHOST || process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.PGPORT || process.env.DB_PORT || '5432'),
-    user: process.env.PGUSER || process.env.DB_USER,
-    password: process.env.PGPASSWORD || process.env.DB_PASSWORD,
-    database: process.env.PGDATABASE || process.env.DB_NAME,
+    user: process.env.PGUSER || process.env.DB_USER || 'postgres',
+    password: process.env.PGPASSWORD || process.env.DB_PASSWORD || process.env.DB_PASS || '',
+    database: process.env.PGDATABASE || process.env.DB_NAME || 'sms_db',
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 60000,
@@ -60,6 +60,14 @@ if (process.env.DATABASE_URL) {
       rejectUnauthorized: false
     } : false
   };
+
+  // Fix: If DB_HOST is actually a port number, use localhost
+  if (dbConfig.host && !isNaN(dbConfig.host)) {
+    dbConfig.host = 'localhost';
+    if (!dbConfig.port || dbConfig.port === 5432) {
+      dbConfig.port = parseInt(dbConfig.host);
+    }
+  }
 
   // Log database configuration (without sensitive data) only in development
   if (process.env.NODE_ENV === 'development') {
