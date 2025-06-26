@@ -12,6 +12,12 @@ const handleResponse = async (response) => {
       localStorage.removeItem('userRole');
       window.location.href = '/login';
     }
+    
+    // Handle database connection errors specifically
+    if (response.status === 503 && data.error === 'Database unavailable') {
+      throw new Error('Database connection failed. Please check your database configuration or try again later.');
+    }
+    
     throw new Error(data.error || data.message || 'Something went wrong');
   }
   
