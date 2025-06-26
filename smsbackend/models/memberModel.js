@@ -1,5 +1,4 @@
-const pool = require('../config/db');
-const User = require('./userModel');
+const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 
 const Member = {
