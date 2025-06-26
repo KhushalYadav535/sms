@@ -96,6 +96,16 @@ const generateInvoices = async (req, res) => {
     }
 
     for (const member of membersResult.rows) {
+      // Defensive: skip if house_number (flat_number) is missing
+      if (!member.flat_number) {
+        console.warn('Skipping member with missing flat_number (house_number):', member);
+        continue;
+      }
+      // Defensive: skip if name or email missing
+      if (!member.name || !member.email) {
+        console.warn('Skipping member with missing name or email:', member);
+        continue;
+      }
       // Generate invoice number
       const invoiceNumber = `INV-${year}-${nextNumber.toString().padStart(3, '0')}`;
       nextNumber++;
@@ -106,6 +116,9 @@ const generateInvoices = async (req, res) => {
       // Inside generateInvoices, before using month in the date string
       const monthNumber = (isNaN(month) ? (monthNames.indexOf(month) + 1) : parseInt(month));
       const monthStr = monthNumber.toString().padStart(2, '0');
+
+      // Log context before insert
+      console.log('Creating invoice for member:', member, 'InvoiceNumber:', invoiceNumber);
 
       // Create invoice
       const result = await pool.query(`
@@ -152,7 +165,11 @@ const generateInvoices = async (req, res) => {
     res.json({ message: 'Invoices generated successfully', invoices: generatedInvoices });
   } catch (error) {
     console.error('Error generating invoices:', error);
-    res.status(500).json({ message: 'Error generating invoices' });
+    // Return detailed error in development
+    res.status(500).json({
+      message: process.env.NODE_ENV !== 'production' ? error.message : 'Error generating invoices',
+      details: process.env.NODE_ENV !== 'production' ? error : undefined
+    });
   }
 };
 
