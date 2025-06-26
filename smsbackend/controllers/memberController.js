@@ -118,11 +118,28 @@ exports.create = async (req, res) => {
       });
     }
 
-    // Create new member profile
-    console.log('Creating member profile with data:', { user_id, house_number, phone_number });
+    // Validate required fields
+    if (!name || !email || !house_number || !phone_number) {
+      return res.status(400).json({
+        message: 'All fields (name, email, house_number, phone_number) are required.'
+      });
+    }
+
+    // Check for duplicate email in members table
+    const emailExists = await pool.query('SELECT * FROM members WHERE email = $1', [email]);
+    if (emailExists.rows.length > 0) {
+      return res.status(400).json({
+        message: 'A member with this email already exists.',
+        code: 'EMAIL_EXISTS',
+        existingMember: emailExists.rows[0]
+      });
+    }
+
+    // Create new member profile (insert all relevant fields)
+    console.log('Creating member profile with data:', { user_id, name, email, house_number, phone_number });
     const result = await pool.query(
-      'INSERT INTO members (user_id, house_number, phone) VALUES ($1, $2, $3) RETURNING id',
-      [user_id, house_number, phone_number]
+      'INSERT INTO members (user_id, name, email, house_number, phone) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [user_id, name, email, house_number, phone_number]
     );
     console.log('Member profile created with ID:', result.rows[0].id);
 
