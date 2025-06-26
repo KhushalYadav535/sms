@@ -17,9 +17,9 @@ exports.create = async (req, res) => {
     
     // Get member_id from the authenticated user
     const userId = req.user.id;
-    const [member] = await pool.query('SELECT id FROM members WHERE user_id = ?', [userId]);
+    const memberResult = await pool.query('SELECT id FROM members WHERE user_id = $1', [userId]);
     
-    if (!member || !member.length) {
+    if (!memberResult.rows || !memberResult.rows.length) {
       return res.status(400).json({ 
         message: 'You need to create a member profile first. Please provide your house number and phone number.',
         code: 'NO_MEMBER_PROFILE',
@@ -27,7 +27,7 @@ exports.create = async (req, res) => {
       });
     }
     
-    const member_id = member[0].id;
+    const member_id = memberResult.rows[0].id;
     const entry = await Accounting.create({ ...req.body, member_id });
     res.status(201).json(entry);
   } catch (error) {
@@ -66,67 +66,67 @@ exports.remove = async (req, res) => {
 exports.getStats = async (req, res) => {
   try {
     // Get total income
-    const [incomeResult] = await pool.query(`
+    const incomeResult = await pool.query(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM accounting 
       WHERE type = 'income'
     `);
-    const total_income = parseFloat(incomeResult[0].total) || 0;
+    const total_income = parseFloat(incomeResult.rows[0].total) || 0;
 
     // Get total expenses
-    const [expenseResult] = await pool.query(`
+    const expenseResult = await pool.query(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM accounting 
       WHERE type = 'expense'
     `);
-    const total_expense = parseFloat(expenseResult[0].total) || 0;
+    const total_expense = parseFloat(expenseResult.rows[0].total) || 0;
 
     // Get monthly income
-    const [monthlyIncomeResult] = await pool.query(`
+    const monthlyIncomeResult = await pool.query(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM accounting 
       WHERE type = 'income'
-      AND MONTH(date) = MONTH(CURRENT_DATE())
-      AND YEAR(date) = YEAR(CURRENT_DATE())
+      AND EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM CURRENT_DATE)
+      AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM CURRENT_DATE)
     `);
-    const monthly_income = parseFloat(monthlyIncomeResult[0].total) || 0;
+    const monthly_income = parseFloat(monthlyIncomeResult.rows[0].total) || 0;
 
     // Get last month's income
-    const [lastMonthIncomeResult] = await pool.query(`
+    const lastMonthIncomeResult = await pool.query(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM accounting 
       WHERE type = 'income'
-      AND MONTH(date) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-      AND YEAR(date) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+      AND EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+      AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')
     `);
-    const last_month_income = parseFloat(lastMonthIncomeResult[0].total) || 0;
+    const last_month_income = parseFloat(lastMonthIncomeResult.rows[0].total) || 0;
 
     // Get monthly expenses
-    const [monthlyExpenseResult] = await pool.query(`
+    const monthlyExpenseResult = await pool.query(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM accounting 
       WHERE type = 'expense'
-      AND MONTH(date) = MONTH(CURRENT_DATE())
-      AND YEAR(date) = YEAR(CURRENT_DATE())
+      AND EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM CURRENT_DATE)
+      AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM CURRENT_DATE)
     `);
-    const monthly_expense = parseFloat(monthlyExpenseResult[0].total) || 0;
+    const monthly_expense = parseFloat(monthlyExpenseResult.rows[0].total) || 0;
 
     // Get last month's expenses
-    const [lastMonthExpenseResult] = await pool.query(`
+    const lastMonthExpenseResult = await pool.query(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM accounting 
       WHERE type = 'expense'
-      AND MONTH(date) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-      AND YEAR(date) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+      AND EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+      AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')
     `);
-    const last_month_expense = parseFloat(lastMonthExpenseResult[0].total) || 0;
+    const last_month_expense = parseFloat(lastMonthExpenseResult.rows[0].total) || 0;
 
     // Get total transactions count
-    const [transactionsResult] = await pool.query(`
+    const transactionsResult = await pool.query(`
       SELECT COUNT(*) as total 
       FROM accounting
     `);
-    const total_transactions = parseInt(transactionsResult[0].total) || 0;
+    const total_transactions = parseInt(transactionsResult.rows[0].total) || 0;
 
     // Calculate trends
     let income_trend = 0;

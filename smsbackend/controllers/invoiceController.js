@@ -227,24 +227,24 @@ const addStandardCharge = async (req, res) => {
 // Download invoice PDF
 const downloadInvoicePDF = async (req, res) => {
   try {
-    const [invoice] = await pool.query(`
+    const invoiceResult = await pool.query(`
       SELECT i.*, u.name as member_name, m.house_number as flat_number
       FROM invoices i
       JOIN members m ON i.member_id = m.id
       JOIN users u ON m.user_id = u.id
-      WHERE i.invoice_id = ?
+      WHERE i.invoice_id = $1
     `, [req.params.id]);
 
-    if (invoice.length === 0) {
+    if (invoiceResult.rows.length === 0) {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
-    const [items] = await pool.query(`
+    const itemsResult = await pool.query(`
       SELECT * FROM invoice_items
-      WHERE invoice_id = ?
+      WHERE invoice_id = $1
     `, [req.params.id]);
 
-    const invoiceData = { ...invoice[0], items };
+    const invoiceData = { ...invoiceResult.rows[0], items: itemsResult.rows };
     
     // Generate PDF
     const doc = new jsPDF();
@@ -268,14 +268,14 @@ const downloadInvoicePDF = async (req, res) => {
 
     // Add table rows
     let y = 90;
-    items.forEach((item, index) => {
+    itemsResult.rows.forEach((item, index) => {
       doc.text(item.description, 20, y);
       doc.text(`₹${Number(item.amount).toFixed(2)}`, 150, y);
       y += 10;
     });
 
     // Add total
-    const total = items.reduce((sum, item) => sum + Number(item.amount), 0);
+    const total = itemsResult.rows.reduce((sum, item) => sum + Number(item.amount), 0);
     doc.line(20, y, 190, y);
     doc.text('Total:', 20, y + 10);
     doc.text(`₹${total.toFixed(2)}`, 150, y + 10);
@@ -294,15 +294,15 @@ const downloadInvoicePDF = async (req, res) => {
 const sendInvoiceEmail = async (req, res) => {
   const { email } = req.body;
   try {
-    const [invoice] = await pool.query(`
+    const invoiceResult = await pool.query(`
       SELECT i.*, u.name as member_name, m.house_number as flat_number
       FROM invoices i
       JOIN members m ON i.member_id = m.id
       JOIN users u ON m.user_id = u.id
-      WHERE i.invoice_id = ?
+      WHERE i.invoice_id = $1
     `, [req.params.id]);
 
-    if (invoice.length === 0) {
+    if (invoiceResult.rows.length === 0) {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
