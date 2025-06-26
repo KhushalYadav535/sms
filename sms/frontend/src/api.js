@@ -124,3 +124,16 @@ export const changeUserPassword = (data) => authFetch(`${API_URL}/users/change-p
 // Dashboard Stats
 export const fetchUserDashboardStats = () => authFetch(`${API_URL}/users/dashboard`);
 export const fetchAdminDashboardStats = () => authFetch(`${API_URL}/users/admin/dashboard`);
+
+// Invoices
+export const fetchInvoices = () => authFetch(`${API_URL}/invoices`);
+export const fetchInvoiceById = (id) => authFetch(`${API_URL}/invoices/${id}`);
+export const generateInvoices = (data) => authFetch(`${API_URL}/invoices/generate`, { method: 'POST', body: JSON.stringify(data) });
+export const updateInvoiceStatus = (id, status) => authFetch(`${API_URL}/invoices/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+export const downloadInvoicePDF = (id) => authFetch(`${API_URL}/invoices/${id}/pdf`);
+export const sendInvoiceEmail = (id, email) => authFetch(`${API_URL}/invoices/${id}/send-email`, { method: 'POST', body: JSON.stringify({ email }) });
+
+// Standard Charges
+export const fetchStandardCharges = () => authFetch(`${API_URL}/invoices/charges/standard`);
+export const addStandardCharge = (data) => authFetch(`${API_URL}/invoices/charges/standard`, { method: 'POST', body: JSON.stringify(data) });
+export const updateStandardCharge = (id, data) => authFetch(`${API_URL}/invoices/charges/standard/${id}`, { method: 'PUT', body: JSON.stringify(data) });

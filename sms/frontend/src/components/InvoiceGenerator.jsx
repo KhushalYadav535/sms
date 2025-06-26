@@ -42,7 +42,11 @@ import {
   PictureAsPdf
 } from '@mui/icons-material';
 import { useUser } from '../context/UserContext';
-import axios from '../config/axios';
+import { 
+  fetchMembers as fetchMembersAPI, 
+  fetchStandardCharges as fetchStandardChargesAPI,
+  generateInvoices as generateInvoicesAPI
+} from '../api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -73,8 +77,8 @@ const InvoiceGenerator = () => {
 
   const fetchMembers = async () => {
     try {
-      const response = await axios.get('/members');
-      setMembers(response.data);
+      const response = await fetchMembersAPI();
+      setMembers(response);
     } catch (error) {
       console.error('Error fetching members:', error);
       setError('Failed to fetch members');
@@ -83,9 +87,9 @@ const InvoiceGenerator = () => {
 
   const fetchStandardCharges = async () => {
     try {
-      const response = await axios.get('/invoices/charges/standard');
-      console.log('Standard Charges:', response.data);
-      setStandardCharges(response.data);
+      const response = await fetchStandardChargesAPI();
+      console.log('Standard Charges:', response);
+      setStandardCharges(response);
     } catch (error) {
       console.error('Error fetching standard charges:', error);
       setError('Failed to fetch standard charges');
@@ -98,7 +102,7 @@ const InvoiceGenerator = () => {
       setError('');
       setSuccess('');
 
-      const response = await axios.post('/invoices/generate', {
+      const response = await generateInvoicesAPI({
         month,
         year,
         startNumber,
@@ -106,11 +110,11 @@ const InvoiceGenerator = () => {
         selectedMembers: members.map(m => m.id)
       });
 
-      setInvoices(response.data.invoices);
+      setInvoices(response.invoices);
       setSuccess('Invoices generated successfully');
     } catch (error) {
       console.error('Error generating invoices:', error);
-      setError(error.response?.data?.message || 'Failed to generate invoices');
+      setError(error.message || 'Failed to generate invoices');
     } finally {
       setLoading(false);
     }

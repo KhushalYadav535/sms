@@ -55,23 +55,32 @@ const generateInvoices = async (req, res) => {
   const { month, year, startNumber, includeAll, selectedMembers } = req.body;
   
   try {
+    console.log('Generating invoices with data:', { month, year, startNumber, includeAll, selectedMembers });
+    
+    // Validate required fields
+    if (!month || !year) {
+      return res.status(400).json({ message: 'Month and year are required' });
+    }
+
     // Get all active members
     let membersResult;
     if (includeAll) {
       membersResult = await pool.query(`
-        SELECT m.id, u.name, m.house_number AS flat_number, u.email
+        SELECT m.id, u.name, m.house_number AS flat_number, u.email, m.status
         FROM members m
         JOIN users u ON m.user_id = u.id
-        WHERE m.status = 'active'
+        WHERE m.status = 'active' OR m.status IS NULL
       `);
     } else {
       membersResult = await pool.query(`
-        SELECT m.id, u.name, m.house_number AS flat_number, u.email
+        SELECT m.id, u.name, m.house_number AS flat_number, u.email, m.status
         FROM members m
         JOIN users u ON m.user_id = u.id
-        WHERE m.status = 'active' AND m.id = ANY($1)
+        WHERE (m.status = 'active' OR m.status IS NULL) AND m.id = ANY($1)
       `, [selectedMembers]);
     }
+
+    console.log('Found members:', membersResult.rows.length);
 
     // Get standard charges
     const chargesResult = await pool.query(`
@@ -79,9 +88,15 @@ const generateInvoices = async (req, res) => {
       WHERE is_active = true
     `);
 
+    console.log('Found standard charges:', chargesResult.rows.length);
+
+    if (chargesResult.rows.length === 0) {
+      return res.status(400).json({ message: 'No standard charges found. Please add standard charges first.' });
+    }
+
     const generatedInvoices = [];
 
-    // Inside generateInvoices, before the loop, add:
+    // Get the next invoice number
     const lastInvoiceResult = await pool.query(`
       SELECT invoice_number FROM invoices
       WHERE invoice_number LIKE $1
@@ -89,86 +104,124 @@ const generateInvoices = async (req, res) => {
       LIMIT 1
     `, [`INV-${year}-%`]);
 
-    let nextNumber = 1;
+    let nextNumber = parseInt(startNumber) || 1;
     if (lastInvoiceResult.rows.length > 0) {
       const lastNumber = parseInt(lastInvoiceResult.rows[0].invoice_number.split('-')[2]);
-      nextNumber = lastNumber + 1;
+      nextNumber = Math.max(nextNumber, lastNumber + 1);
     }
+
+    // Month names array for conversion
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
 
     for (const member of membersResult.rows) {
-      // Defensive: skip if house_number (flat_number) is missing
-      if (!member.flat_number) {
-        console.warn('Skipping member with missing flat_number (house_number):', member);
-        continue;
-      }
-      // Defensive: skip if name or email missing
-      if (!member.name || !member.email) {
-        console.warn('Skipping member with missing name or email:', member);
-        continue;
-      }
-      // Generate invoice number
-      const invoiceNumber = `INV-${year}-${nextNumber.toString().padStart(3, '0')}`;
-      nextNumber++;
+      try {
+        // Defensive: skip if house_number (flat_number) is missing
+        if (!member.flat_number) {
+          console.warn('Skipping member with missing flat_number (house_number):', member);
+          continue;
+        }
+        
+        // Defensive: skip if name or email missing
+        if (!member.name || !member.email) {
+          console.warn('Skipping member with missing name or email:', member);
+          continue;
+        }
 
-      // Calculate total amount
-      const totalAmount = chargesResult.rows.reduce((sum, charge) => sum + Number(charge.amount), 0);
+        // Generate invoice number
+        const invoiceNumber = `INV-${year}-${nextNumber.toString().padStart(3, '0')}`;
+        nextNumber++;
 
-      // Inside generateInvoices, before using month in the date string
-      const monthNumber = (isNaN(month) ? (monthNames.indexOf(month) + 1) : parseInt(month));
-      const monthStr = monthNumber.toString().padStart(2, '0');
+        // Calculate total amount
+        const totalAmount = chargesResult.rows.reduce((sum, charge) => sum + Number(charge.amount), 0);
 
-      // Log context before insert
-      console.log('Creating invoice for member:', member, 'InvoiceNumber:', invoiceNumber);
+        // Convert month to number
+        const monthNumber = (isNaN(month) ? (monthNames.indexOf(month) + 1) : parseInt(month));
+        const monthStr = monthNumber.toString().padStart(2, '0');
 
-      // Create invoice
-      const result = await pool.query(`
-        INSERT INTO invoices (
-          invoice_number, member_id, flat_number, soc_code,
-          bill_period, due_date, total_amount
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING invoice_id
-      `, [
-        invoiceNumber,
-        member.id,
-        member.flat_number,
-        'SOC001', // Replace with actual society code
-        `${year}-${monthStr}-01`,
-        `${year}-${monthStr}-15`, // Due date is 15th of the month
-        totalAmount
-      ]);
+        console.log('Creating invoice for member:', {
+          id: member.id,
+          name: member.name,
+          flat_number: member.flat_number,
+          invoiceNumber,
+          totalAmount
+        });
 
-      const invoiceId = result.rows[0].invoice_id;
-
-      // Create invoice items
-      for (const charge of chargesResult.rows) {
-        await pool.query(`
-          INSERT INTO invoice_items (
-            invoice_id, description, amount, soc_code
-          ) VALUES ($1, $2, $3, $4)
+        // Create invoice
+        const result = await pool.query(`
+          INSERT INTO invoices (
+            invoice_number, member_id, flat_number, soc_code,
+            bill_period, due_date, total_amount
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING invoice_id
         `, [
-          invoiceId,
-          charge.description,
-          charge.amount,
-          'SOC001' // Replace with actual society code
+          invoiceNumber,
+          member.id,
+          member.flat_number,
+          'SOC001',
+          `${year}-${monthStr}-01`,
+          `${year}-${monthStr}-15`,
+          totalAmount
         ]);
-      }
 
-      generatedInvoices.push({
-        invoiceId,
-        invoiceNumber,
-        memberName: member.name,
-        flat: member.flat_number,
-        email: member.email,
-        total: totalAmount
-      });
+        const invoiceId = result.rows[0].invoice_id;
+
+        // Create invoice items
+        for (const charge of chargesResult.rows) {
+          await pool.query(`
+            INSERT INTO invoice_items (
+              invoice_id, description, amount, soc_code
+            ) VALUES ($1, $2, $3, $4)
+          `, [
+            invoiceId,
+            charge.description,
+            charge.amount,
+            'SOC001'
+          ]);
+        }
+
+        generatedInvoices.push({
+          invoiceId,
+          invoiceNumber,
+          memberName: member.name,
+          flat: member.flat_number,
+          email: member.email,
+          total: totalAmount
+        });
+
+      } catch (memberError) {
+        console.error('Error creating invoice for member:', member.id, memberError);
+        // Continue with other members instead of failing completely
+      }
     }
 
-    res.json({ message: 'Invoices generated successfully', invoices: generatedInvoices });
+    console.log('Successfully generated invoices:', generatedInvoices.length);
+
+    res.json({ 
+      message: 'Invoices generated successfully', 
+      invoices: generatedInvoices,
+      count: generatedInvoices.length
+    });
   } catch (error) {
     console.error('Error generating invoices:', error);
-    // Return detailed error in development
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+      position: error.position,
+      stack: error.stack
+    });
+    
     res.status(500).json({
-      message: process.env.NODE_ENV !== 'production' ? error.message : 'Error generating invoices',
-      details: process.env.NODE_ENV !== 'production' ? error : undefined
+      message: 'Error generating invoices',
+      error: process.env.NODE_ENV !== 'production' ? error.message : undefined,
+      details: process.env.NODE_ENV !== 'production' ? {
+        code: error.code,
+        detail: error.detail,
+        hint: error.hint
+      } : undefined
     });
   }
 };

@@ -344,6 +344,123 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/settings', settingsRoutes);
 
+// Test endpoints for debugging
+app.get('/api/test-invoice-schema', async (req, res) => {
+  try {
+    console.log('Testing invoice schema...');
+    
+    // Check if invoices table exists
+    const tableExists = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'invoices'
+      );
+    `);
+    
+    if (!tableExists.rows[0].exists) {
+      return res.json({ error: 'Invoices table does not exist' });
+    }
+    
+    // Check columns in invoices table
+    const columns = await db.query(`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns 
+      WHERE table_name = 'invoices'
+      ORDER BY ordinal_position;
+    `);
+    
+    // Check if standard_charges table exists
+    const chargesTableExists = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'standard_charges'
+      );
+    `);
+    
+    // Check if members table has required columns
+    const membersColumns = await db.query(`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns 
+      WHERE table_name = 'members'
+      ORDER BY ordinal_position;
+    `);
+    
+    // Test standard charges data
+    const chargesData = await db.query('SELECT COUNT(*) as count FROM standard_charges WHERE is_active = true');
+    
+    // Test members data
+    const membersData = await db.query(`
+      SELECT COUNT(*) as count 
+      FROM members m 
+      JOIN users u ON m.user_id = u.id 
+      WHERE m.status = 'active' OR m.status IS NULL
+    `);
+    
+    res.json({
+      invoicesTable: tableExists.rows[0].exists,
+      invoicesColumns: columns.rows,
+      chargesTable: chargesTableExists.rows[0].exists,
+      membersColumns: membersColumns.rows,
+      activeCharges: chargesData.rows[0].count,
+      activeMembers: membersData.rows[0].count
+    });
+  } catch (error) {
+    console.error('Error testing invoice schema:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/test-invoice-generation', async (req, res) => {
+  try {
+    console.log('Testing invoice generation...');
+    
+    // Test with sample data
+    const testData = {
+      month: 'January',
+      year: '2024',
+      startNumber: '001',
+      includeAll: true,
+      selectedMembers: []
+    };
+    
+    // Get members
+    const membersResult = await db.query(`
+      SELECT m.id, u.name, m.house_number AS flat_number, u.email, m.status
+      FROM members m
+      JOIN users u ON m.user_id = u.id
+      WHERE m.status = 'active' OR m.status IS NULL
+      LIMIT 1
+    `);
+    
+    if (membersResult.rows.length === 0) {
+      return res.json({ error: 'No active members found' });
+    }
+    
+    // Get charges
+    const chargesResult = await db.query(`
+      SELECT * FROM standard_charges
+      WHERE is_active = true
+    `);
+    
+    if (chargesResult.rows.length === 0) {
+      return res.json({ error: 'No standard charges found' });
+    }
+    
+    res.json({
+      testData,
+      membersFound: membersResult.rows.length,
+      chargesFound: chargesResult.rows.length,
+      sampleMember: membersResult.rows[0],
+      sampleCharges: chargesResult.rows
+    });
+  } catch (error) {
+    console.error('Error testing invoice generation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   const frontendPath = path.join(__dirname, 'frontend/dist');

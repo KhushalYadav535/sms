@@ -9,6 +9,15 @@ BEGIN
     END IF;
 END $$;
 
+-- Add status column to members table if it doesn't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'members' AND column_name = 'status') THEN
+        ALTER TABLE members ADD COLUMN status VARCHAR(20) CHECK (status IN ('active', 'inactive', 'pending')) DEFAULT 'active';
+    END IF;
+END $$;
+
 -- Create standard_charges table if it doesn't exist
 CREATE TABLE IF NOT EXISTS standard_charges (
   charge_id SERIAL PRIMARY KEY,
@@ -34,6 +43,24 @@ CREATE TABLE IF NOT EXISTS invoices (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
 );
+
+-- Add flat_number column to invoices table if it doesn't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'invoices' AND column_name = 'flat_number') THEN
+        ALTER TABLE invoices ADD COLUMN flat_number VARCHAR(50);
+    END IF;
+END $$;
+
+-- Add soc_code column to invoices table if it doesn't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'invoices' AND column_name = 'soc_code') THEN
+        ALTER TABLE invoices ADD COLUMN soc_code VARCHAR(20) DEFAULT 'SOC001';
+    END IF;
+END $$;
 
 -- Create invoice_items table if it doesn't exist
 CREATE TABLE IF NOT EXISTS invoice_items (
