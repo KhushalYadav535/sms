@@ -58,6 +58,16 @@ exports.getById = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     console.log('Creating member with data:', req.body);
+    
+    // Test database connection first
+    try {
+      const testResult = await pool.query('SELECT 1 as test');
+      console.log('Database connection test successful:', testResult.rows[0]);
+    } catch (dbError) {
+      console.error('Database connection test failed:', dbError);
+      return res.status(500).json({ message: 'Database connection failed' });
+    }
+    
     const { house_number, phone_number, email, name, password } = req.body;
     const userRole = req.user && req.user.role;
     let user_id;

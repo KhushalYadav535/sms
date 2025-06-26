@@ -170,6 +170,75 @@ app.get('/test-schema', async (req, res) => {
   }
 });
 
+// Test member creation endpoint
+app.post('/test-member', async (req, res) => {
+  try {
+    console.log('Testing member creation with data:', req.body);
+    
+    // Check if members table exists
+    const tableCheck = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'members'
+      );
+    `);
+    
+    if (!tableCheck.rows[0].exists) {
+      return res.status(500).json({ error: 'Members table does not exist' });
+    }
+    
+    // Check members table structure
+    const columnsCheck = await db.query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'members' 
+      ORDER BY ordinal_position
+    `);
+    
+    console.log('Members table columns:', columnsCheck.rows);
+    
+    // Try to create a test user first
+    const testUserResult = await db.query(
+      'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id',
+      ['Test User', 'test@example.com', '$2b$10$test', 'user']
+    );
+    
+    const testUserId = testUserResult.rows[0].id;
+    console.log('Test user created with ID:', testUserId);
+    
+    // Try to create a test member
+    const testMemberResult = await db.query(
+      'INSERT INTO members (user_id, house_number, phone) VALUES ($1, $2, $3) RETURNING id',
+      [testUserId, 'TEST-101', '1234567890']
+    );
+    
+    console.log('Test member created with ID:', testMemberResult.rows[0].id);
+    
+    // Clean up
+    await db.query('DELETE FROM members WHERE user_id = $1', [testUserId]);
+    await db.query('DELETE FROM users WHERE id = $1', [testUserId]);
+    
+    res.json({
+      success: true,
+      message: 'Member creation test successful',
+      tableExists: tableCheck.rows[0].exists,
+      columns: columnsCheck.rows
+    });
+    
+  } catch (error) {
+    console.error('Test member creation failed:', error);
+    res.status(500).json({
+      error: 'Test member creation failed',
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+      position: error.position
+    });
+  }
+});
+
 // Test database connection
 db.query('SELECT 1')
   .then(() => {
@@ -205,6 +274,37 @@ db.query('SELECT 1')
   })
   .then((result) => {
     logger.info('Database setup/migration completed successfully');
+    
+    // Verify critical tables and columns exist
+    return db.query(`
+      SELECT 
+        (SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'members')) as members_table_exists,
+        (SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'members' AND column_name = 'house_number')) as house_number_exists,
+        (SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'standard_charges')) as standard_charges_exists
+    `);
+  })
+  .then((result) => {
+    const verification = result.rows[0];
+    logger.info('Database verification results:', verification);
+    
+    if (!verification.members_table_exists) {
+      logger.error('❌ Members table is missing!');
+    } else {
+      logger.info('✅ Members table exists');
+    }
+    
+    if (!verification.house_number_exists) {
+      logger.error('❌ House number column is missing from members table!');
+    } else {
+      logger.info('✅ House number column exists');
+    }
+    
+    if (!verification.standard_charges_exists) {
+      logger.error('❌ Standard charges table is missing!');
+    } else {
+      logger.info('✅ Standard charges table exists');
+    }
+    
     return db.query(`
       SELECT column_name, data_type, is_nullable 
       FROM information_schema.columns 
