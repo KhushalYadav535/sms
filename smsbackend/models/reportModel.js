@@ -104,7 +104,7 @@ class Report {
           SELECT 
             m.house_number,
             m.name,
-            m.phone_number,
+            m.phone,
             m.email,
             m.created_at
           FROM members m

@@ -23,7 +23,7 @@ exports.create = async (req, res) => {
       return res.status(400).json({ 
         message: 'You need to create a member profile first. Please provide your house number and phone number.',
         code: 'NO_MEMBER_PROFILE',
-        requiredFields: ['house_number', 'phone_number']
+        requiredFields: ['house_number', 'phone']
       });
     }
     

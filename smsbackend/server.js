@@ -141,14 +141,22 @@ db.query('SELECT 1')
       const setupSQL = fs.readFileSync(path.join(__dirname, 'setup.sql'), 'utf8');
       return db.query(setupSQL);
     } else {
-      logger.info('Users table exists');
-      return db.query(`
-        SELECT column_name, data_type, is_nullable 
-        FROM information_schema.columns 
-        WHERE table_name = 'users' 
-        ORDER BY ordinal_position
-      `);
+      logger.info('Users table exists, running migration...');
+      // Import and run migration SQL
+      const fs = require('fs');
+      const path = require('path');
+      const migrateSQL = fs.readFileSync(path.join(__dirname, 'migrate.sql'), 'utf8');
+      return db.query(migrateSQL);
     }
+  })
+  .then((result) => {
+    logger.info('Database setup/migration completed successfully');
+    return db.query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' 
+      ORDER BY ordinal_position
+    `);
   })
   .then((result) => {
     if (result.rows && result.rows.length > 0) {

@@ -98,7 +98,7 @@ exports.create = async (req, res) => {
 
     // Create new member profile
     const result = await pool.query(
-      'INSERT INTO members (user_id, house_number, phone_number) VALUES ($1, $2, $3) RETURNING id',
+      'INSERT INTO members (user_id, house_number, phone) VALUES ($1, $2, $3) RETURNING id',
       [user_id, house_number, phone_number]
     );
 
@@ -130,7 +130,7 @@ exports.update = async (req, res) => {
     }
 
     await pool.query(
-      'UPDATE members SET house_number = $1, phone_number = $2 WHERE id = $3',
+      'UPDATE members SET house_number = $1, phone = $2 WHERE id = $3',
       [house_number, phone_number, id]
     );
 

@@ -1,5 +1,7 @@
 require('dotenv').config();
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
 
 console.log('🔍 Database Connection Test');
 console.log('==========================');
@@ -59,23 +61,18 @@ if (process.env.DATABASE_URL) {
   pool = new Pool(dbConfig);
 }
 
-async function testConnection() {
-  let client;
+async function testDatabase() {
   try {
-    console.log('\n🔌 Attempting to connect to database...');
-    client = await pool.connect();
-    console.log('✅ Database connected successfully!');
-
-    // Test basic query
-    console.log('\n🧪 Testing basic query...');
-    const result = await client.query('SELECT NOW() as current_time, version() as db_version');
-    console.log('✅ Basic query successful');
-    console.log('- Current time:', result.rows[0].current_time);
-    console.log('- Database version:', result.rows[0].db_version.split(' ')[0]);
-
+    console.log('Testing database connection...');
+    
+    // Test basic connection
+    const result = await pool.query('SELECT NOW() as current_time, version() as db_version');
+    console.log('✅ Database connected successfully');
+    console.log('Current time:', result.rows[0].current_time);
+    console.log('Database version:', result.rows[0].db_version);
+    
     // Check if users table exists
-    console.log('\n📋 Checking if users table exists...');
-    const tableCheck = await client.query(`
+    const tableCheck = await pool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_schema = 'public' 
@@ -83,65 +80,54 @@ async function testConnection() {
       );
     `);
     
-    const tableExists = tableCheck.rows[0].exists;
-    
-    if (tableExists) {
+    if (tableCheck.rows[0].exists) {
       console.log('✅ Users table exists');
       
-      // Check table structure
-      const columnsResult = await client.query(`
-        SELECT column_name, data_type, is_nullable 
-        FROM information_schema.columns 
-        WHERE table_name = 'users' 
-        ORDER BY ordinal_position
+      // Run migration
+      console.log('Running migration...');
+      const migrateSQL = fs.readFileSync(path.join(__dirname, 'migrate.sql'), 'utf8');
+      await pool.query(migrateSQL);
+      console.log('✅ Migration completed successfully');
+      
+      // Check if standard_charges table exists
+      const standardChargesCheck = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'standard_charges'
+        );
       `);
       
-      console.log('📊 Users table columns:');
-      columnsResult.rows.forEach(col => {
-        console.log(`  - ${col.column_name}: ${col.data_type} (${col.is_nullable === 'YES' ? 'nullable' : 'not null'})`);
-      });
-
-      // Check if admin user exists
-      const adminResult = await client.query('SELECT COUNT(*) as count FROM users WHERE email = $1', ['admin@society.com']);
-      console.log(`👤 Admin users found: ${adminResult.rows[0].count}`);
+      if (standardChargesCheck.rows[0].exists) {
+        console.log('✅ Standard charges table exists');
+        
+        // Check if house_number column exists in members table
+        const columnCheck = await pool.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.columns 
+            WHERE table_name = 'members' 
+            AND column_name = 'house_number'
+          );
+        `);
+        
+        if (columnCheck.rows[0].exists) {
+          console.log('✅ House number column exists in members table');
+        } else {
+          console.log('❌ House number column missing in members table');
+        }
+      } else {
+        console.log('❌ Standard charges table missing');
+      }
       
     } else {
       console.log('❌ Users table does not exist');
-      console.log('💡 You may need to run the setup.sql script');
     }
-
-  } catch (error) {
-    console.error('\n❌ Database connection failed:');
-    console.error('- Error:', error.message);
-    console.error('- Code:', error.code);
-    console.error('- Detail:', error.detail);
-    console.error('- Hint:', error.hint);
     
-    if (error.code === 'ECONNREFUSED') {
-      console.log('\n💡 Possible solutions:');
-      console.log('1. Check if PostgreSQL server is running');
-      console.log('2. Verify the host and port are correct');
-      console.log('3. Check firewall settings');
-    } else if (error.code === 'ENOTFOUND') {
-      console.log('\n💡 Possible solutions:');
-      console.log('1. Check if the database host is correct');
-      console.log('2. Verify DNS resolution');
-    } else if (error.code === '28P01') {
-      console.log('\n💡 Possible solutions:');
-      console.log('1. Check username and password');
-      console.log('2. Verify database credentials');
-    } else if (error.code === '3D000') {
-      console.log('\n💡 Possible solutions:');
-      console.log('1. Check if the database exists');
-      console.log('2. Verify database name is correct');
-    }
+  } catch (error) {
+    console.error('❌ Database test failed:', error);
   } finally {
-    if (client) {
-      client.release();
-    }
     await pool.end();
-    console.log('\n🔚 Connection test completed');
   }
 }
 
-testConnection(); 
+testDatabase(); 
