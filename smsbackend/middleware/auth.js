@@ -11,12 +11,17 @@ exports.protect = async (req, res, next) => {
     }
 
     if (!token) {
+      console.log('No token provided in request');
       return res.status(401).json({ message: 'Not authorized to access this route' });
     }
 
     try {
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+      console.log('JWT Secret available:', !!jwtSecret);
+      
+      const decoded = jwt.verify(token, jwtSecret);
+      console.log('Token decoded successfully:', { id: decoded.id, email: decoded.email, role: decoded.role });
 
       // Get user from database
       const result = await db.query(
@@ -25,13 +30,16 @@ exports.protect = async (req, res, next) => {
       );
 
       if (result.rows.length === 0) {
+        console.log('User not found in database for ID:', decoded.id);
         return res.status(401).json({ message: 'User not found' });
       }
 
       // Add user to request object
       req.user = result.rows[0];
+      console.log('User authenticated successfully:', { id: req.user.id, email: req.user.email, role: req.user.role });
       next();
     } catch (error) {
+      console.error('Token verification failed:', error);
       return res.status(401).json({ message: 'Not authorized to access this route' });
     }
   } catch (error) {

@@ -57,38 +57,50 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
+    console.log('Creating member with data:', req.body);
     const { house_number, phone_number, email, name, password } = req.body;
     const userRole = req.user && req.user.role;
     let user_id;
+
+    console.log('User role:', userRole);
+    console.log('Extracted data:', { house_number, phone_number, email, name, password: password ? '[HIDDEN]' : 'undefined' });
 
     if (userRole === 'admin' || userRole === 'secretary') {
       // Admin/secretary can create member for any email
       let existingUser;
       if (email) {
+        console.log('Checking for existing user with email:', email);
         const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         existingUser = userResult.rows[0] || null;
+        console.log('Existing user found:', existingUser ? 'Yes' : 'No');
       }
       if (existingUser) {
         user_id = existingUser.id;
+        console.log('Using existing user ID:', user_id);
       } else {
         // Use provided password or generate one
         const userPassword = password || Math.random().toString(36).slice(-8);
         const hashedPassword = await bcrypt.hash(userPassword, 10);
+        console.log('Creating new user with email:', email);
         const userResult = await pool.query(
           'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id',
           [name, email, hashedPassword, 'user']
         );
         user_id = userResult.rows[0].id;
+        console.log('Created new user with ID:', user_id);
         // Optionally: send generated password to admin/secretary
       }
     } else {
       // Normal user: only create for themselves
       user_id = req.user.id;
+      console.log('Using current user ID:', user_id);
     }
 
     // Check if member profile already exists for this user_id
+    console.log('Checking for existing member profile for user ID:', user_id);
     const existingResult = await pool.query('SELECT * FROM members WHERE user_id = $1', [user_id]);
     if (existingResult.rows.length > 0) {
+      console.log('Member profile already exists for user ID:', user_id);
       return res.status(400).json({
         message: 'Member profile already exists for this user',
         code: 'PROFILE_EXISTS',
@@ -97,19 +109,30 @@ exports.create = async (req, res) => {
     }
 
     // Create new member profile
+    console.log('Creating member profile with data:', { user_id, house_number, phone_number });
     const result = await pool.query(
       'INSERT INTO members (user_id, house_number, phone) VALUES ($1, $2, $3) RETURNING id',
       [user_id, house_number, phone_number]
     );
+    console.log('Member profile created with ID:', result.rows[0].id);
 
     const newMemberResult = await pool.query(
       'SELECT m.*, u.name, u.email FROM members m JOIN users u ON m.user_id = u.id WHERE m.id = $1',
       [result.rows[0].id]
     );
+    console.log('Retrieved new member data:', newMemberResult.rows[0]);
 
     res.status(201).json(newMemberResult.rows[0]);
   } catch (error) {
     console.error('Error creating member:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+      position: error.position,
+      stack: error.stack
+    });
     res.status(500).json({ message: 'Internal server error' });
   }
 };

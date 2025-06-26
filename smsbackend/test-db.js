@@ -112,6 +112,53 @@ async function testDatabase() {
         
         if (columnCheck.rows[0].exists) {
           console.log('✅ House number column exists in members table');
+          
+          // Check members table structure
+          const membersColumns = await pool.query(`
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'members' 
+            ORDER BY ordinal_position
+          `);
+          console.log('📊 Members table columns:');
+          membersColumns.rows.forEach(col => {
+            console.log(`  - ${col.column_name}: ${col.data_type} (${col.is_nullable === 'YES' ? 'nullable' : 'not null'})`);
+          });
+          
+          // Test member insertion
+          console.log('\n🧪 Testing member insertion...');
+          try {
+            // First create a test user
+            const testUserResult = await pool.query(
+              'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id',
+              ['Test User', 'test@example.com', '$2b$10$test', 'user']
+            );
+            const testUserId = testUserResult.rows[0].id;
+            console.log('✅ Test user created with ID:', testUserId);
+            
+            // Then create a test member
+            const testMemberResult = await pool.query(
+              'INSERT INTO members (user_id, house_number, phone) VALUES ($1, $2, $3) RETURNING id',
+              [testUserId, 'A-101', '1234567890']
+            );
+            console.log('✅ Test member created with ID:', testMemberResult.rows[0].id);
+            
+            // Clean up test data
+            await pool.query('DELETE FROM members WHERE user_id = $1', [testUserId]);
+            await pool.query('DELETE FROM users WHERE id = $1', [testUserId]);
+            console.log('✅ Test data cleaned up');
+            
+          } catch (insertError) {
+            console.error('❌ Member insertion test failed:', insertError);
+            console.error('Error details:', {
+              message: insertError.message,
+              code: insertError.code,
+              detail: insertError.detail,
+              hint: insertError.hint,
+              position: insertError.position
+            });
+          }
+          
         } else {
           console.log('❌ House number column missing in members table');
         }

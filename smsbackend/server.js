@@ -116,6 +116,60 @@ app.get('/test-db', async (req, res) => {
   }
 });
 
+// Test database schema endpoint
+app.get('/test-schema', async (req, res) => {
+  try {
+    // Check if members table exists
+    const membersTableCheck = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'members'
+      );
+    `);
+    
+    if (!membersTableCheck.rows[0].exists) {
+      return res.json({
+        status: 'Members table does not exist',
+        tables: []
+      });
+    }
+    
+    // Get members table columns
+    const membersColumns = await db.query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'members' 
+      ORDER BY ordinal_position
+    `);
+    
+    // Check if house_number column exists
+    const houseNumberCheck = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_name = 'members' 
+        AND column_name = 'house_number'
+      );
+    `);
+    
+    res.json({
+      status: 'Schema check completed',
+      membersTableExists: membersTableCheck.rows[0].exists,
+      houseNumberColumnExists: houseNumberCheck.rows[0].exists,
+      membersColumns: membersColumns.rows,
+      environment: process.env.NODE_ENV
+    });
+  } catch (error) {
+    console.error('Schema test error:', error);
+    res.status(500).json({
+      status: 'Schema check failed',
+      error: error.message,
+      code: error.code,
+      environment: process.env.NODE_ENV
+    });
+  }
+});
+
 // Test database connection
 db.query('SELECT 1')
   .then(() => {
